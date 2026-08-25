@@ -17,6 +17,17 @@ interface PlaywrightCapture {
     fun isAvailable(): Boolean
     fun name(): String
     fun close()
+
+    /**
+     * Container the engine writes, without the dot.
+     *
+     * The browser-driven engines produce WebM; Remotion produces MP4, because an
+     * H.264 stream cannot go into a WebM container and H.264 encodes far faster
+     * than VP8 (measured: 13.1 against 9.1 frames per second on the same deck).
+     * The downstream steps derive their file names and audio codec from this
+     * rather than assuming WebM.
+     */
+    fun outputExtension(): String = "webm"
 }
 
 /**

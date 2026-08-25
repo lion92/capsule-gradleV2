@@ -24,6 +24,9 @@ object RemotionPlanner {
     /** File the plan is serialised to, read back by the render script. */
     const val PROPS_FILE: String = "capsule-props.json"
 
+    /** Base name of the rendered video; the container decides the extension. */
+    const val FINAL_VIDEO_BASENAME: String = "capsule"
+
     /**
      * Builds the plan for a deck.
      *
@@ -42,6 +45,7 @@ object RemotionPlanner {
         viewportWidth: Int,
         viewportHeight: Int,
         fps: Int,
+        containerExtension: String = "webm",
     ): RemotionPlan {
         require(slideDurations.isNotEmpty()) { "slideDurations must not be empty" }
         require(sections.isNotEmpty()) { "sections must not be empty" }
@@ -64,7 +68,7 @@ object RemotionPlanner {
             width = viewportWidth,
             height = viewportHeight,
             fps = fps,
-            finalWebm = outputDir.resolve(ScreenshotPlanner.FINAL_WEBM_NAME),
+            finalWebm = outputDir.resolve("$FINAL_VIDEO_BASENAME.$containerExtension"),
             propsFile = outputDir.resolve(PROPS_FILE),
         )
     }
@@ -82,7 +86,7 @@ object RemotionPlanner {
      * Kept here rather than in the adapter because it is a pure transformation:
      * a plan in, a string out, verifiable without Node or a browser.
      */
-    fun toPropsJson(plan: RemotionPlan): String {
+    fun toPropsJson(plan: RemotionPlan, manimAssets: Map<Int, String> = emptyMap()): String {
         val mapper = com.fasterxml.jackson.databind.ObjectMapper()
         val root = mapper.createObjectNode()
         root.put("width", plan.width)
@@ -96,6 +100,7 @@ object RemotionPlanner {
             node.put("index", slide.index)
             node.put("durationInFrames", slide.durationInFrames)
             node.put("html", slide.html)
+            manimAssets[slide.index]?.let { node.put("manim", it) }
         }
         return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root)
     }
@@ -111,12 +116,14 @@ object RemotionPlanner {
         projectDir: File,
         nodeExecutablePath: String,
         concurrency: Int,
+        codec: String = "vp8",
     ): List<String> = listOf(
         nodeExecutablePath,
         File(projectDir, RENDER_SCRIPT).absolutePath,
         "--props", plan.propsFile.absolutePath,
         "--out", plan.finalWebm.absolutePath,
         "--concurrency", concurrency.coerceAtLeast(1).toString(),
+        "--codec", codec,
     )
 }
 

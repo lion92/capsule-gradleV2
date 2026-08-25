@@ -25,6 +25,8 @@ class RemotionCaptureImpl(
     private val nodeExecutablePath: String = "node",
     private val concurrency: Int = 4,
     private val fps: Int = 30,
+    /** Directories searched for the Manim animation named by `data-manim`. */
+    private val manimSources: List<File> = emptyList(),
 ) : PlaywrightCapture {
 
     private val logger = Logging.getLogger(RemotionCaptureImpl::class.java)
@@ -32,6 +34,13 @@ class RemotionCaptureImpl(
     private var availabilityProbe: Boolean? = null
 
     override fun name(): String = "remotion"
+
+    /**
+     * MP4/H.264. VP8 was measured at 9.1 frames per second against 13.1 for
+     * H.264 on the same deck — it was the pipeline's bottleneck, not the frame
+     * rendering — and an H.264 stream has no place in a WebM container.
+     */
+    override fun outputExtension(): String = "mp4"
 
     /**
      * Remotion needs Node and its own dependency tree. Probing runs
@@ -76,17 +85,34 @@ class RemotionCaptureImpl(
             viewportWidth = viewportWidth,
             viewportHeight = viewportHeight,
             fps = fps,
+            containerExtension = outputExtension(),
         )
 
         RemotionTemplate.materialiseInto(projectDir)
-        plan.propsFile.writeText(RemotionPlanner.toPropsJson(plan))
 
+        // Manim renders one animation per slide; Remotion can only load them
+        // through its public directory, so they are staged there and referenced
+        // by name. A raw <video> in the injected markup would not be frame-accurate.
+        val assets = stageManimAssets(plan, projectDir)
+        plan.propsFile.writeText(RemotionPlanner.toPropsJson(plan, assets))
+
+        // Décoder une vidéo par diapo sature le compositeur : au-delà de deux
+        // frames en parallèle il meurt sur SIGTERM et le rendu échoue. Mesuré :
+        // 4 -> plantage vers la 237e image, 2 -> stable.
+        val effectiveConcurrency =
+            if (assets.isNotEmpty()) concurrency.coerceAtMost(VIDEO_MAX_CONCURRENCY) else concurrency
+        if (effectiveConcurrency != concurrency) {
+            logger.lifecycle(
+                "  Remotion: concurrency ramenée de {} à {} (les diapos portent des vidéos)",
+                concurrency, effectiveConcurrency
+            )
+        }
         logger.lifecycle(
             "  Remotion: {} slides, {} frames at {} fps, concurrency {}",
-            plan.size, plan.totalFrames, plan.fps, concurrency
+            plan.size, plan.totalFrames, plan.fps, effectiveConcurrency
         )
 
-        val argv = RemotionPlanner.renderArgs(plan, projectDir, nodeExecutablePath, concurrency)
+        val argv = RemotionPlanner.renderArgs(plan, projectDir, nodeExecutablePath, effectiveConcurrency, CODEC)
         val logFile = File(outputDir, "remotion-render.log")
         val exitCode = ProcessBuilder(argv)
             .directory(projectDir)
@@ -114,7 +140,40 @@ class RemotionCaptureImpl(
         availabilityProbe = null
     }
 
+    /**
+     * Copies the Manim animation of each slide into the Remotion public
+     * directory and returns, per slide index, the file name to reference.
+     *
+     * Slides without a `data-manim` attribute simply get no animation.
+     */
+    private fun stageManimAssets(plan: RemotionPlan, projectDir: File): Map<Int, String> {
+        val publicDir = File(projectDir, "public").apply { mkdirs() }
+        val staged = mutableMapOf<Int, String>()
+        plan.slides.forEach { slide ->
+            val name = MANIM_ATTR.find(slide.html)?.groupValues?.get(1) ?: return@forEach
+            val source = manimSources.map { File(it, name) }.firstOrNull { it.isFile }
+            if (source == null) {
+                logger.warn("  Remotion: animation '{}' introuvable pour la diapo {}", name, slide.index + 1)
+                return@forEach
+            }
+            val target = File(publicDir, name)
+            if (!target.exists() || target.length() != source.length()) {
+                source.copyTo(target, overwrite = true)
+            }
+            staged[slide.index] = name
+        }
+        return staged
+    }
+
     companion object {
+        /** Video codec handed to the render script. */
+        internal const val CODEC: String = "h264"
+
+        /** Frames rendered in parallel when slides carry a video. */
+        internal const val VIDEO_MAX_CONCURRENCY: Int = 2
+
+        private val MANIM_ATTR = Regex("""data-manim="([^"]+)"""")
+
         private val SLIDES_REGEX = Regex("""(?s)<div class="slides">(.*)</div>""")
         private val HEAD_REGEX = Regex("""(?s)<head>.*?</head>""")
 
