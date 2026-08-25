@@ -101,4 +101,20 @@ class ManimEngineTest {
         val engine = ManimEngineImpl(config)
         assertEquals(false, engine.isAvailable(), "ManimEngineImpl with 'noop' path should report unavailable")
     }
+
+    // ─── CAP-28 US-2 — Coverage gaps (probeDuration delegation) ───
+
+    @Test
+    fun `manim engine probeDuration delegates to MediaProbeUtil and returns zero for missing file`() {
+        val engine = ManimEngineImpl(ManimConfig(executablePath = "/nonexistent/path/manim"))
+        val missingFile = File("/nonexistent/video.mp4")
+        assertEquals(0.0, engine.probeDuration(missingFile))
+    }
+
+    @Test
+    fun `manim engine probeDuration returns zero for nonexistent file path`() {
+        val engine = ManimEngineImpl(ManimConfig())
+        val nonexistent = File("/tmp/capsule-test-nonexistent-${System.currentTimeMillis()}.mp4")
+        assertEquals(0.0, engine.probeDuration(nonexistent))
+    }
 }

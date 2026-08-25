@@ -1,5 +1,5 @@
 = TODO — capsule-gradle (Détroit)
-:last_update: 2026-08-25 (Session 122 — **EPIC CAP-ANIM TERMINÉ 3/3 US** — cadrage rétroactif code Remotion livré PR #1 (S-121) + tests unit manquants 40 unit (AudioCodecs/RemotionConfig/RemotionTemplate/RemotionCaptureImpl/CaptureResolver REMOTION) + cucumber BDD `capsule_remotion.feature` 3 scénarios + runner dédié 16ème + 2 functional. 977 unit VERT (+40 net baseline 937), 69 functional VERT (+2 net baseline 67). `check` BUILD SUCCESSFUL. Zéro régression, zéro secret, zéro bump BOM.)
+:last_update: 2026-08-25 (Session 124 — **EPIC CAP-28 TERMINÉ 4/4 US** — coverage gaps sur 3 fichiers low-coverage. US-0 cadrage BACKLOG détaillé (7 décisions). US-1 PiperTtsEngine 4 unit. US-2 ManimEngineImpl 2 unit. US-3 ScreenshotCaptureImpl 3 unit. Baby-step TDD strict RED → GREEN. 986 unit VERT 0 FAIL (+9 net baseline 977 → 986). Zéro prod modifié — pure couverture. Découverte : LanguageCatalog N0 ne contient pas "de". EPIC CAP-28 clos.)
 
 '''
 == ✅ EPIC CAP-MODEL — TERMINE (session 069)
@@ -241,7 +241,7 @@
 . [x] CAP-GLOSSARY-3 — Cucumber BDD `capsule_glossary_context.feature` `@context @glossary` (3 scénarios) + runner dédié `CapsuleGlossaryContextCucumberRunner` (pattern S-082) + steps préfixés "glossary context" (bug S-088) + `CucumberTaskSpec("cucumberTestGlossaryContext")` 14ème. Baby-step BDD RED → GREEN (3/3 PASSED en 55s) → REFACTOR. ✅ S-112
 
 '''
-== 🟡 Prochaine session — Backlog capsule restant (CAP-28, CAP-CR3-4, CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW)
+== 🟡 Prochaine session — Backlog capsule restant (CAP-CR3-4, CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW)
 
 '''
 == ✅ EPIC CAP-27 — VTT burn-in (3 US ~5 pts, TERMINÉ 3/3 US S-113)
@@ -265,7 +265,7 @@
 . [x] 🟡 CR-9 — Robust HTML parsing (HtmlSectionParser au lieu de regex raw) ✅ S-074
 . [x] 🟡 CR-10 — CI optimization cucumberTest onlyIf ✅ S-075
 . [x] 🟢 CAP-27 — VTT burn-in (TERMINÉ 3/3 US S-113 : US-0 cadrage, US-1 `SubtitleBurnInCommand` + 13 unit, US-2 Cucumber 2 scénarios `@subtitles @burnin @vtt` non-integration + E2E real ffmpeg)
-. [ ] 🟢 CAP-28 — Coverage gaps (PiperTtsEngine 31%, ManimEngineImpl 25%, ScreenshotCaptureImpl 26%)
+. [x] 🟢 CAP-28 — Coverage gaps (PiperTtsEngine 31%, ManimEngineImpl 25%, ScreenshotCaptureImpl 26%) — TERMINÉ 4/4 US S-124 (9 unit : 4 PiperTtsEngine + 2 ManimEngine + 3 ScreenshotCapture, 986 unit VERT 0 FAIL)
 . [x] 🔴 CAP-CR3-1 — CI `full` avec vrais binaires + probe de durée vidéo ✅ S-101 (5/5 US, 782 unit + 57 functional + 11 cucumber dédiés)
 . [x] 🔴 CAP-CR3-2 — Mode strict anti-NoOp (`capsule.strictMode`) ✅ S-091
 . [x] 🔴 CAP-CR3-3 — Décision `ScreenshotCaptureImpl` vs `PlaywrightCaptureImpl` ✅ S-096 (branché comme alternative configurable `capture.strategy: playwright|screenshot`, 5/5 US, 742 unit + 52 functional + 3 cucumber)
@@ -315,3 +315,11 @@
 . [x] CAP-ANIM-0 — Cadrage EPIC rétroactif (audit 5 fichiers prod + 10 unit existants, 10 constats + 9 décisions, EPIC "EN COURS" puis TERMINÉ) ✅ S-122
 . [x] CAP-ANIM-1 — Tests unit manquants (AudioCodecs 7 unit + RemotionConfig 8 unit + RemotionTemplate 7 unit + RemotionCaptureImpl 14 unit + CaptureResolver REMOTION 4 unit = 40 unit, 977 VERT 0 FAIL) ✅ S-122
 . [x] CAP-ANIM-2 — Functional + Cucumber BDD (capsule_remotion.feature 3 scénarios + runner dédié CapsuleRemotionCucumberRunner 16ème + 2 functional RemotionCaptureFunctionalTest, 69 functional VERT +2) ✅ S-122
+
+'''
+== ✅ EPIC CAP-28 — Coverage Gaps (TERMINÉ 4/4 US S-124)
+
+. [x] CAP-28-0 — Cadrage EPIC (audit 3 fichiers low-coverage + 7 décisions architecturales + correction audit S-123 ManimEngineImpl n'a pas de cache availabilityProbe) ✅ S-123 audit + S-124 finalisation
+. [x] CAP-28-1 — PiperTtsEngine coverage (4 unit : language() 2 branches direct/fallback + resolvedModel 2 branches `?: model`/`?.let`, `PiperTtsEngineTest.kt` nouveau) ✅ S-124
+. [x] CAP-28-2 — ManimEngineImpl coverage (2 unit : probeDuration delegation fichier inexistant → 0.0) ✅ S-124
+. [x] CAP-28-3 — ScreenshotCaptureImpl coverage (3 unit : capture empty durations throws, isAvailable ffmpeg absent → false, close resets probe → 2e isAvailable re-probe) ✅ S-124

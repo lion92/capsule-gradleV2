@@ -1,0 +1,115 @@
+= Session 124 — CAP-28 Coverage Gaps (US-0 finalisation + US-1/2/3 baby-step TDD)
+:session: 124
+:borough: Détroit
+:date: 2026-08-25
+:statut: TERMINÉ — EPIC CAP-28 TERMINÉ 4/4 US
+
+== Contexte Hérité
+
+Session 123 — **CAP-28 US-0 audit partiel** — audit 3 fichiers low-coverage
+(PiperTtsEngine 31%, ManimEngineImpl 25%, ScreenshotCaptureImpl 26%). Décisions
+préliminaires (pas de nouveau domaine, baby-step TDD strict, tests sans I/O
+uniquement, 3 US ~11 unit). Clôture anticipée par pilote — US-0 cadrage non
+finalisé, US-1/2/3 non démarrés. Baseline 977 unit VERT.
+
+== Mission Session 124
+
+Finaliser CAP-28 : US-0 cadrage BACKLOG détaillé + US-1/2/3 baby-step TDD.
+
+== Travail Effectué
+
+=== US-0 Cadrage finalisé
+
+BACKLOG section CAP-28 refondue (entrée minimale P2 → section détaillée avec
+audit 3 fichiers, gaps testables vs gated, 7 décisions architecturales, 4 US
+détaillées). Correction audit S-123 : `isAvailable` memoization pour
+ManimEngineImpl était une erreur (pas de cache `availabilityProbe` dans
+ManimEngineImpl — seul ScreenshotCaptureImpl a ce cache). US-2 réduit à 2 unit
+au lieu de 3.
+
+=== US-1 PiperTtsEngine (4 unit)
+
+Nouveau fichier `src/test/kotlin/capsule/PiperTtsEngineTest.kt` (4 unit) :
+. `language() returns injected language when non-null` — branche directe
+  (language non-null → retourne direct)
+. `language() resolves from default model when language is null` — branche
+  fallback (language null → resolveByPiperModel(resolvedModel))
+. `resolvedModel uses default model when language is null` — branche `?: model`
+  (language null → model default, resolveByPiperModel("custom-model") → null)
+. `language() returns injected ES language and does not fall back to default
+  model` — branche `?.let` (language non-null → piperModel, language()
+  retourne language injecté pas default model)
+
+Baby-step TDD RED → GREEN. Zéro prod modifié — pure couverture.
+
+*Découverte* : `LanguageCatalog` N0 (i18n-contracts 0.0.2) ne contient pas "de"
+(10 langues : en, zh, hi, es, fr, ar, bn, pt, ru, ur). Test initial avec DE
+échouait (`findByCode("de")` → null). Corrigé avec ES (espagnol, présent dans
+catalog + VoiceMapping). Le test existant `CapsulePluginTest` ligne 130
+utilisait DE mais ne vérifiait pas `language()` — passait par accident.
+
+=== US-2 ManimEngineImpl (2 unit)
+
+`ManimEngineTest.kt` étendu (2 unit) :
+. `probeDuration delegates to MediaProbeUtil and returns zero for missing file`
+  — fichier inexistant → 0.0 (delegation à `MediaProbeUtil.probeDuration`)
+. `probeDuration returns zero for nonexistent file path` — 2e test avec path
+  dynamique → 0.0
+
+Baby-step TDD RED → GREEN. Zéro prod modifié.
+
+*Note* : Audit S-123 mentionnait `isAvailable` memoization pour ManimEngineImpl
+— erreur corrigée. `ManimEngineImpl` n'a pas de cache `availabilityProbe`
+(chaque appel lance un ProcessBuilder). Seul `ScreenshotCaptureImpl` a ce cache.
+
+=== US-3 ScreenshotCaptureImpl (3 unit)
+
+`ScreenshotCaptureTest` (dans `CapsulePluginTest.kt`) étendu (3 unit) :
+. `rejects empty slide durations` — `require(isNotEmpty())` throws
+  IllegalArgumentException
+. `isAvailable returns false when ffmpeg path is nonexistent` — ffmpegPath
+  inexistant → false (branche `isFfmpegAvailable` false)
+. `isAvailable probes again after close resets cache` — close() reset
+  `availabilityProbe = null`, 2e isAvailable() re-probe sans crash
+
+Baby-step TDD RED → GREEN. Zéro prod modifié. Import `assertFailsWith` ajouté.
+
+*Note* : `encodeSlides` parallelism `coerceIn(1, size)` non testé (méthode
+private, pas d'accès sans introspection). 3 unit au lieu de 4 prévus.
+
+== Gate
+
+. `compileKotlin` UP-TO-DATE
+. `compileTestKotlin` SUCCESS
+. `test` : **986 tests, 0 failures** (+9 net baseline 977 → 986)
+. Zéro régression, zéro secret, zéro bump BOM, zéro prod modifié
+
+== Synthèse EPIC CAP-28
+
+4 US (US-0 cadrage + US-1/2/3 exécution), ~7 pts. 9 unit ajoutés (4 PiperTts +
+2 ManimEngine + 3 ScreenshotCapture). **EPIC CAP-28 TERMINÉ 4/4 US** — pure
+couverture unitaire sur branches existantes testables sans I/O. Les branches
+gated (piper binaire, manim binaire, ffmpeg, Playwright) restent hors scope
+(tests d'intégration gated CI).
+
+== Fichiers modifiés
+
+. `src/test/kotlin/capsule/PiperTtsEngineTest.kt` (nouveau, 4 unit)
+. `src/test/kotlin/capsule/ManimEngineTest.kt` (étendu, +2 unit)
+. `src/test/kotlin/capsule/CapsulePluginTest.kt` (ScreenshotCaptureTest étendu,
+  +3 unit, import assertFailsWith)
+. `BACKLOG.adoc` (section CAP-28 refondue)
+. `.agents/INDEX.adoc`, `.agents/PROMPT_REPRISE.adoc`,
+  `.agents/SESSIONS_HISTORY.adoc` (clôture)
+. `.agents/archives/COMPLETED_TASKS_ARCHIVE_2026-08.adoc` (archivage)
+
+== Prochaine session
+
+Maintenance P2 — EPICs restants : CAP-CR3-4 (convention resolveScriptDir),
+CAP-CHAPITRE (chapter markers), CAP-PODCAST (audio-only), CAP-PREVIEW (aperçu).
+
+== Score
+
+8/10 — EPIC terminé en 1 session, baby-step TDD strict respecté, zéro prod
+modifié, découverte LanguageCatalog DE absent (corrigé ES). 1 unit de moins que
+prévu (encodeSlides private non testable).

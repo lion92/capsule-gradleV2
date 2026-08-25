@@ -1,88 +1,35 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
-:session: 121
+:session: 125
 :borough: Détroit
-:session_precedente: 120 — EPIC MEMPHIS-BOM-FIX US-5 TERMINÉ (cross-borough)
+:session_precedente: 124 — EPIC CAP-28 TERMINÉ 4/4 US (coverage gaps)
 
 == Contexte Hérité
 
-Session 120 — EPIC MEMPHIS-BOM-FIX US-5 TERMINÉ (cross-borough MEMPHIS +
-Queens) :
-- Catalogue capsule fixé : `slider` → `slider-plugin`, slider 0.0.16 → 0.0.18,
-  codebase 0.0.8 → 0.0.10, BOM 0.0.16 → 0.0.27
-- Bug discovery : `testImplementation(libs.slider)` amenait Groovy 3.0.17
-  (via asciidoctor-gradle-jvm-slides) qui cassait ProjectBuilder (79/917
-  tests FAILED préexistantes). Retrait — aucun test n'importait slider.
-- Gate : `test` 917 tests 0 FAIL + `cucumberTestTranscript` 4/4 PASSED
-- CAP-TRANSCRIPT EPIC TERMINÉ 6/6 US (BACKLOG sync US-5 ✅ S-119)
-- EPIC MEMPHIS-BOM-FIX TERMINÉ 5/5 US cross-borough
+Session 124 — **EPIC CAP-28 TERMINÉ 4/4 US** — coverage gaps sur 3 fichiers
+low-coverage (PiperTtsEngine 31%, ManimEngineImpl 25%, ScreenshotCaptureImpl
+26%). US-0 cadrage BACKLOG détaillé (7 décisions). US-1 PiperTtsEngine 4 unit
+(`PiperTtsEngineTest.kt` nouveau — `language()` 2 branches + `resolvedModel`
+2 branches). US-2 ManimEngineImpl 2 unit (`probeDuration` delegation).
+US-3 ScreenshotCaptureImpl 3 unit (capture empty durations throws, isAvailable
+ffmpeg absent, close resets probe). Baby-step TDD strict RED → GREEN.
+**986 unit VERT 0 FAIL** (+9 net baseline 977 → 986). Zéro prod modifié — pure
+couverture. Découverte : `LanguageCatalog` N0 ne contient pas "de" (10 langues :
+en/zh/hi/es/fr/ar/bn/pt/ru/ur). EPIC CAP-28 clos.
 
-== Mission Session 121
+== Mission Session 125
 
-=== Intégration PR #1 — "Fix/build toolchain et pipeline" (lion92)
+Maintenance P2 — EPICs restants (par priorité) :
 
-PR : https://github.com/cccp-education/capsule-gradle/pull/1
-Branche : `pr-1` (fetchée localement). Base : `e8f1fec` (avant S-120).
-7 commits, 42 fichiers, +1615/-201.
-
-==== Commits de la PR
-
-. `5e86e90` fix(build) — conventions 0.0.2 → 0.0.3 (toolchain Java 25) + CI
-  JDK 25 + exclusion Groovy 3 `testRuntimeClasspath { exclude(group = "org.codehaus.groovy") }`
-. `5477d62` fix(i18n) — namespace bundle `i18n/Messages` → `capsule/i18n/Messages`
-  (conflit classpath avec slider) + 10 langues complétées (task.group.verification +
-  validateCapsuleVideoDuration.description)
-. `253d104` fix(video) — 4 défauts capture : narration double (injectSubtitleTrack
-  réinjectait AUDIO_INJECT_SCRIPT), vidéo tronquée SCREENSHOT (listFiles .first()
-  prenait slide-N.webm au lieu de capsule.webm), parallelCapture ne produisait
-  rien (cherchait "slide.webm" inexistant), ffmpeg hardcodé ignorait
-  ffmpegExecutablePath
-. `846b13a` docs — réaligne READMEs + INDEX + session 119 sur code réel
-. `b495253` fix(video) — capture fonctionnelle conteneur : Chromium --no-sandbox,
-  navigateur unique par instance (pas 1/diapo), encodage PNG→WebM parallèle,
-  reveal.js CDN supprimé (mono-diapo), FFmpeg stderr→log file
-. `671b886` feat(anim) — **CAP-ANIM** stratégie `CaptureStrategy.REMOTION` :
-  composition image par image (cascade, dérive, fondu, progressbar), React
-  embarqué jar, `RemotionPlanner`/`RemotionCaptureImpl`/`RemotionTemplate`,
-  section `capsule.remotion.*` DSL 4 sources
-. `5cee4b2` feat(anim) — Remotion MP4/H.264 + Manim incrusté (`OffthreadVideo`),
-  `PlaywrightCapture.outputExtension()`, `AudioCodecs` codec selon conteneur
-. `6a1cd63` fix(tts) — generateCapsule ne réécrit plus narration existante
-  (CapsuleBuildTask.synthesize appelait engine.synthesize sans condition)
-
-==== Conflits de merge (testé S-120)
-
-. `capsule-plugin/build.gradle.kts` — **AUTO-FUSIONNÉ** ✅. Ma version retire
-  `testImplementation(libs.slider)`, la PR ajoute exclusion Groovy 3 +
-  bump conventions 0.0.3. Approches complémentaires.
-. `capsule-plugin/.agents/INDEX.adoc` — **CONFLIT MANUEL** sur l'en-tête.
-  Garder ma version S-120 (plus récente), intégrer les corrections de la PR
-  (session 119 dupliquée, CAP-PROVENANCE/CAP-TRANSCRIPT marqués TODO).
-. `capsule-plugin/gradle/libs.versions.toml` — **PAS DE CONFLIT** (PR ne touche
-  pas le catalogue).
-
-==== Plan d'intégration (baby-step)
-
-. `git merge pr-1` — résoudre conflit INDEX.adoc (garder S-120 + corrections PR)
-. Vérifier cohérence post-merge :
-  ** Conventions 0.0.3 + BOM 0.0.27 + codebase 0.0.10 compatibles ?
-  ** Exclusion Groovy 3 + retrait testImplementation(libs.slider) coexistent ?
-  ** Namespace i18n `capsule/i18n/Messages` — `CapsuleMessages.kt` aligné ?
-  ** Nouveau `CaptureStrategy.REMOTION` — merger/config/extension gèrent l'enum ?
-. Gate : `compileKotlin` + `compileTestKotlin` + `test` + `cucumberTestTranscript`
-. Nouveaux domaines à valider : `AudioCodecs.kt`, `RemotionCapture.kt`,
-  `RemotionPlanner.kt`, `RemotionTemplate.kt` (CAP-ANIM)
-. CI workflows : `full-tests.yml` + `test.yml` (JDK 25 +
-  `cucumberTestDurationValidation` au lieu de `validateCapsuleVideoDuration`)
-. Sync gouvernance : INDEX/PROMPT_REPRISE/SESSIONS_HISTORY + EPIC CAP-ANIM BACKLOG
-
-==== Points d'attention
-
-* Conventions 0.0.3 pas sur Central (mavenLocal seulement). Vérifier
-  compatibilité BOM 0.0.27.
-* Namespace i18n : la PR déplace `Messages.properties` →
-  `capsule/i18n/Messages.properties` (conflit classpath avec slider résolu).
-* CAP-ANIM = nouveau EPIC (Remotion). À cadrer dans BACKLOG après merge.
-* 926 tests dans la PR (vs 917 baseline S-120) — +9 tests RemotionPlanner.
+. **CAP-CR3-4** — Convention Gradle `resolveScriptDir/resolveDeckDir`
+  (`CapsuleManager.kt:234-254` navigue en dur vers
+  `rootProject.projectDir.parentFile/slider-plugin/...`). Remplacer par
+  convention configurable + validation. 🟡 P2, ⬜ TODO.
+. **CAP-CHAPITRE** — Intro/outro + chapter markers depuis métadonnées SPD.
+  5 US ~10 pts. 🟡 P2, ⬜ TODO.
+. **CAP-PODCAST** — Extraction audio-only (mode podcast). 3 US ~4 pts.
+  🟡 P2, ⬜ TODO.
+. **CAP-PREVIEW** — Aperçu rapide (previewOnly flag). 3 US ~4 pts.
+  🟡 P2, ⬜ TODO.
 
 == Méthodologie
 
@@ -94,13 +41,28 @@ Pas de subagent, pas de parallélisation.
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
 * English only : code, Gherkin, commentaires
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
-* Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
+* Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
+  préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
 * Économie d'encre = skip si artefact existe et valide (AGENT.adoc Loi)
 * Ports Ollama : 11437-11465 rotation (11434-11436 INTERDITS)
-* `CapsuleMessages` object (domaine `capsule.i18n`) — 11 `Messages*.properties` 10 langues, 24 keys (23 + transcript S-118)
-* DSL 4 sources pattern : ENV < props < YAML < CLI. Merger helpers `mergeStr/mergeInt/mergeDouble/mergeBoolean/mergeStrList` + `mergeVersioning`/`mergeCaptureStrategy`/`mergeOutputFormat`/`mergeTranscriptStrategy` (enums)
-* 3 loaders domaine `capsule.context` : `DocContextLoader`, `PedagogicalScenarioLoader`, `GlossaryLoader`. Tous object pur, mirror pattern, `ContextChannel.Docs.truncateToTokens` pour la troncation budget.
-* Pattern object pur pour commande ffmpeg : `AudioPostCommand` (`capsule.audio`), `SubtitleBurnInCommand` (`capsule`, CAP-27), `FormatConversion` (`capsule`, CAP-MP4). `buildArgv(...)` sans I/O, fully testable.
-* `capsule.feed.SlideSegment` (`CapsuleFeedModels.kt:22-33`) — `index`, `title`, `speakerNote`, `type: SlideType`, `manimScene: String?`. Invariants title/speakerNote non-blank. Source de vérité contenu pédagogique. `TranscriptPlan` consomme `List<SlideSegment>` (pas nouveau modèle).
-* `compileOnly(libs.slider)` conservé (runtime : CapsulePlugin applique slider). `testImplementation(libs.slider)` RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder).
-* Catalogue : `slider-plugin` (artifactId réel S-067), slider 0.0.18, codebase 0.0.10, BOM 0.0.27.
+* `LanguageCatalog` N0 (i18n-contracts 0.0.2) = 10 langues
+  (en/zh/hi/es/fr/ar/bn/pt/ru/ur) — pas de "de"
+* `CapsuleMessages` object (domaine `capsule.i18n`) — 11 `Messages*.properties`
+  10 langues, 24 keys (23 + transcript S-118)
+* DSL 4 sources pattern : ENV < props < YAML < CLI
+* 3 loaders domaine `capsule.context` : `DocContextLoader`,
+  `PedagogicalScenarioLoader`, `GlossaryLoader`
+* Pattern object pur pour commande ffmpeg : `AudioPostCommand`
+  (`capsule.audio`), `SubtitleBurnInCommand` (`capsule`, CAP-27),
+  `FormatConversion` (`capsule`, CAP-MP4)
+* `capsule.feed.SlideSegment` — `index`, `title`, `speakerNote`, `type:
+  SlideType`, `manimScene: String?`. Source de vérité contenu pédagogique.
+* `compileOnly(libs.slider)` conservé (runtime). `testImplementation(libs.slider)`
+  RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder).
+* Catalogue : `slider-plugin` (artifactId réel S-067), slider 0.0.18, codebase
+  0.0.10, BOM 0.0.27.
+* 12 domaines DDD capsule : `capsule.feed`, `capsule.capture`, `capsule.tts`,
+  `capsule.subtitles`, `capsule.manim`, `capsule.config`, `capsule.multilang`,
+  `capsule.ai`, `capsule.context`, `capsule.pipeline`, `capsule.i18n`,
+  `capsule.validation`, `capsule.audio`, `capsule.transcript`, `capsule.remotion`.
+* Baseline : 986 unit VERT, 69 functional VERT, cucumber dédiés GREEN.

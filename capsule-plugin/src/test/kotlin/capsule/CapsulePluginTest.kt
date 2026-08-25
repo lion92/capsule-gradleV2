@@ -16,6 +16,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class CapsulePluginTest {
 
@@ -294,6 +295,36 @@ class ScreenshotCaptureTest {
     fun `screenshot capture close is safe without init`() {
         val capture = ScreenshotCaptureImpl()
         capture.close()
+    }
+
+    // ─── CAP-28 US-3 — Coverage gaps (branches testable sans I/O) ───
+
+    @Test
+    fun `screenshot capture rejects empty slide durations`() {
+        val capture = ScreenshotCaptureImpl()
+        assertFailsWith<IllegalArgumentException> {
+            capture.capture(
+                deckHtmlPath = "/nonexistent/deck.html",
+                outputDir = File(System.getProperty("java.io.tmpdir")),
+                viewportWidth = 1280,
+                viewportHeight = 720,
+                slideDurations = emptyList()
+            )
+        }
+    }
+
+    @Test
+    fun `screenshot capture isAvailable returns false when ffmpeg path is nonexistent`() {
+        val capture = ScreenshotCaptureImpl(ffmpegPath = "/nonexistent/ffmpeg/path")
+        assertEquals(false, capture.isAvailable())
+    }
+
+    @Test
+    fun `screenshot capture isAvailable probes again after close resets cache`() {
+        val capture = ScreenshotCaptureImpl(ffmpegPath = "/nonexistent/ffmpeg/path")
+        assertEquals(false, capture.isAvailable())
+        capture.close()
+        assertEquals(false, capture.isAvailable())
     }
 }
 

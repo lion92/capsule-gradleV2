@@ -1269,3 +1269,22 @@ pure. Baseline 977 unit VERT préservée, 69 functional VERT, cucumber dédiés
 GREEN.
 
 Rapport : `.agents/sessions/123-cap-28-audit.adoc`.
+
+== Session 124 — CAP-28 Coverage Gaps (TERMINÉ 4/4 US)
+
+Date : 2026-08-25
+EPIC : CAP-28 — Coverage gaps (Kover P2)
+Statut : ✅ TERMINÉ 4/4 US
+
+US-0 cadrage BACKLOG détaillé (7 décisions, correction audit S-123 :
+ManimEngineImpl n'a pas de cache availabilityProbe — seul ScreenshotCaptureImpl
+l'a). US-1 PiperTtsEngine 4 unit (`PiperTtsEngineTest.kt` nouveau — `language()`
+2 branches + `resolvedModel` 2 branches). US-2 ManimEngineImpl 2 unit
+(`probeDuration` delegation). US-3 ScreenshotCaptureImpl 3 unit (capture empty
+durations throws, isAvailable ffmpeg absent, close resets probe).
+
+Baby-step TDD strict RED → GREEN. 986 unit VERT 0 FAIL (+9 net baseline
+977 → 986). Zéro prod modifié — pure couverture. Découverte : LanguageCatalog
+N0 ne contient pas "de" (10 langues). EPIC CAP-28 clos.
+
+Rapport : `.agents/sessions/124-cap-28-coverage.adoc`.
