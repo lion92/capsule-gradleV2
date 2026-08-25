@@ -7,6 +7,7 @@ import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.UnexpectedBuildFailure
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import capsule.test.PlaywrightTestAssumption.assumePlaywrightAvailable
 
 /**
  * Functional tests for capture strategy (CAP-CR3-3 US-4).
@@ -67,6 +68,7 @@ class CaptureStrategyFunctionalTest {
 
     @Test
     fun `strategy PLAYWRIGHT default preserves backward compat`() {
+        assumePlaywrightAvailable()
         setupBuild("""
             capsule {
                 ttsEngine = "noop"

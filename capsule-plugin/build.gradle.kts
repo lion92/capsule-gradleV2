@@ -191,6 +191,21 @@ afterEvaluate {
             }
         }
     }
+
+    // Playwright tests — spin a real Chromium browser, 15-30 min.
+    // Skip by default unless -PrunPlaywrightTests or CI env var is active.
+    // Pattern mirror CR-10. Decision logic in capsule.ci.PlaywrightTestGuard.
+    val hasRunPlaywright = project.hasProperty("runPlaywrightTests")
+    val shouldRunPlaywright = hasRunPlaywright || isCi
+
+    tasks.named("cucumberTestIntegration").configure {
+        onlyIf { shouldRunPlaywright }
+        doFirst {
+            if (!shouldRunPlaywright) {
+                logger.lifecycle("cucumberTestIntegration skipped (pass -PrunPlaywrightTests or set CI=true to enable)")
+            }
+        }
+    }
 }
 
 dependencies {
