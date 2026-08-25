@@ -28,6 +28,11 @@ object CaptureResolver {
         fun create(): PlaywrightCapture
     }
 
+    /** Factory for [RemotionCaptureImpl] (frame-by-frame animated render). */
+    fun interface RemotionFactory {
+        fun create(): PlaywrightCapture
+    }
+
     /**
      * Resolves the capture engine for the given strategy.
      *
@@ -35,6 +40,7 @@ object CaptureResolver {
      * @param strict           whether strict mode is enabled
      * @param playwrightFactory builds a PlaywrightCaptureImpl when strategy=PLAYWRIGHT
      * @param screenshotFactory builds a ScreenshotCaptureImpl when strategy=SCREENSHOT
+     * @param remotionFactory  builds a RemotionCaptureImpl when strategy=REMOTION
      * @param noOpCapture      the NoOp fallback (built once, reused)
      * @param enginePath       the resolved executable/path for the strict-mode
      *        error message (blank if N/A)
@@ -48,15 +54,18 @@ object CaptureResolver {
         playwrightFactory: PlaywrightFactory,
         screenshotFactory: ScreenshotFactory,
         noOpCapture: PlaywrightCapture,
-        enginePath: String = ""
+        enginePath: String = "",
+        remotionFactory: RemotionFactory = RemotionFactory { noOpCapture },
     ): PlaywrightCapture {
         val engineName = when (strategy) {
             CaptureStrategy.PLAYWRIGHT -> "playwright"
             CaptureStrategy.SCREENSHOT -> "screenshot"
+            CaptureStrategy.REMOTION -> "remotion"
         }
         val impl = when (strategy) {
             CaptureStrategy.PLAYWRIGHT -> playwrightFactory.create()
             CaptureStrategy.SCREENSHOT -> screenshotFactory.create()
+            CaptureStrategy.REMOTION -> remotionFactory.create()
         }
         return if (impl.isAvailable()) {
             impl

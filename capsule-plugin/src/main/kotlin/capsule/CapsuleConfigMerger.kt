@@ -41,7 +41,8 @@ object CapsuleConfigMerger {
             context = mergeContextConfig(envConfig.context, propertiesConfig.context, yaml?.context, cliParams),
             validation = mergeValidationConfig(envConfig.validation, propertiesConfig.validation, yaml?.validation, cliParams),
             audioPost = mergeAudioPostConfig(envConfig.audioPost, propertiesConfig.audioPost, yaml?.audioPost, cliParams),
-            transcript = mergeTranscriptConfig(envConfig.transcript, propertiesConfig.transcript, yaml?.transcript, cliParams)
+            transcript = mergeTranscriptConfig(envConfig.transcript, propertiesConfig.transcript, yaml?.transcript, cliParams),
+            remotion = mergeRemotionConfig(envConfig.remotion, propertiesConfig.remotion, yaml?.remotion, cliParams)
         )
     }
 
@@ -152,6 +153,12 @@ object CapsuleConfigMerger {
             transcript = TranscriptConfig(
                 enabled = env["CAPSULE_TRANSCRIPT_ENABLED"]?.toBoolean() ?: false,
                 strategy = TranscriptStrategy.fromString(env["CAPSULE_TRANSCRIPT_STRATEGY"])
+            ),
+            remotion = RemotionConfig(
+                projectDir = env["CAPSULE_REMOTION_PROJECT_DIR"] ?: "capsule/remotion",
+                nodeExecutablePath = env["CAPSULE_REMOTION_NODE_EXECUTABLE_PATH"] ?: "node",
+                concurrency = env["CAPSULE_REMOTION_CONCURRENCY"]?.toIntOrNull() ?: 4,
+                fps = env["CAPSULE_REMOTION_FPS"]?.toIntOrNull() ?: 30
             )
         )
     }
@@ -231,6 +238,12 @@ object CapsuleConfigMerger {
             transcript = TranscriptConfig(
                 enabled = props["capsule.transcript.enabled"]?.toBoolean() ?: false,
                 strategy = TranscriptStrategy.fromString(props["capsule.transcript.strategy"])
+            ),
+            remotion = RemotionConfig(
+                projectDir = props["capsule.remotion.projectDir"] ?: "capsule/remotion",
+                nodeExecutablePath = props["capsule.remotion.nodeExecutablePath"] ?: "node",
+                concurrency = props["capsule.remotion.concurrency"]?.toIntOrNull() ?: 4,
+                fps = props["capsule.remotion.fps"]?.toIntOrNull() ?: 30
             )
         )
     }
@@ -340,6 +353,15 @@ object CapsuleConfigMerger {
         return TranscriptConfig(
             enabled = mergeBoolean(cli, "transcript.enabled", yaml?.enabled, props.enabled),
             strategy = mergeTranscriptStrategy(cli, "transcript.strategy", yaml?.strategy, props.strategy)
+        )
+    }
+
+    private fun mergeRemotionConfig(env: RemotionConfig, props: RemotionConfig, yaml: RemotionConfig?, cli: Map<String, Any?>): RemotionConfig {
+        return RemotionConfig(
+            projectDir = mergeStr(cli, "remotion.projectDir", yaml?.projectDir, props.projectDir, env.projectDir),
+            nodeExecutablePath = mergeStr(cli, "remotion.nodeExecutablePath", yaml?.nodeExecutablePath, props.nodeExecutablePath, env.nodeExecutablePath),
+            concurrency = mergeInt(cli, "remotion.concurrency", yaml?.concurrency, props.concurrency),
+            fps = mergeInt(cli, "remotion.fps", yaml?.fps, props.fps)
         )
     }
 

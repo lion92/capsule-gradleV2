@@ -214,7 +214,16 @@ open class CapsuleVideoTask : DefaultTask() {
                 )
             },
             noOpCapture = NoOpPlaywrightCapture(),
-            enginePath = capsuleExtension.chromiumExecutablePath.get()
+            enginePath = capsuleExtension.chromiumExecutablePath.get(),
+            remotionFactory = {
+                RemotionCaptureImpl(
+                    projectDir = project.layout.buildDirectory
+                        .dir(capsuleExtension.remotionProjectDir.get()).get().asFile,
+                    nodeExecutablePath = capsuleExtension.remotionNodeExecutablePath.get(),
+                    concurrency = capsuleExtension.remotionConcurrency.get(),
+                    fps = capsuleExtension.remotionFps.get(),
+                )
+            },
         )
         if (resolved.isAvailable()) {
             val totalSecs = slideDurations.sum()

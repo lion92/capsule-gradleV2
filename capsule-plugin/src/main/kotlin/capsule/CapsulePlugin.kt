@@ -186,6 +186,20 @@ class CapsulePlugin : Plugin<Project> {
             ext.audioPostDuckingEnabled.set(config.audioPost.duckingEnabled)
         }
 
+        // Remotion section (CAP-ANIM)
+        if (ext.remotionProjectDir.get() == conventions.remotionProjectDir) {
+            ext.remotionProjectDir.set(config.remotion.projectDir)
+        }
+        if (ext.remotionNodeExecutablePath.get() == conventions.remotionNodeExecutablePath) {
+            ext.remotionNodeExecutablePath.set(config.remotion.nodeExecutablePath)
+        }
+        if (ext.remotionConcurrency.get() == conventions.remotionConcurrency) {
+            ext.remotionConcurrency.set(config.remotion.concurrency)
+        }
+        if (ext.remotionFps.get() == conventions.remotionFps) {
+            ext.remotionFps.set(config.remotion.fps)
+        }
+
         // Transcript section (CAP-TRANSCRIPT)
         if (!ext.transcriptEnabled.isPresent || ext.transcriptEnabled.get() == conventions.transcriptEnabled) {
             ext.transcriptEnabled.set(config.transcript.enabled)
