@@ -1,117 +1,81 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
+:session: 122
+:borough: Détroit
+:session_precedente: 121 — Intégration PR #1 (lion92) + fix ScreenshotCaptureImpl
 
-_Session terminee_ : 118 — **CAP-TRANSCRIPT US-4 tâche
-`generateCapsuleTranscript` + wiring** (baby-step TDD strict RED → GREEN →
-REFACTOR). Domaine `capsule.transcript` (11ème) enrichi avec
-`GenerateCapsuleTranscriptTask.kt` — groupe `generate`, `@InputFile
-speakerNotesFile` (dependsOn `generateCapsuleContent`), `@Input language`/
-`strategy`, `@OutputFile transcriptOutput`
-(`build/capsule/<deckName>-transcript.adoc`), `@Optional @ServiceReference
-LlmBuildService` (si strategy=LLM). Parse `AsciidocSpeakerNoteParser` →
-`CapsuleScript` → `TranscriptPlan`. TEMPLATE → `TranscriptBuilder.build`
-directly. LLM → `project.aiProvider` + `project.resolveModel` +
-`ChatModelTranscriptEnhancer.enhance`. Économie d'encre skip si output existe
-ET non-blank. Wiring `CapsuleManager.registerGenerateTranscriptTask` +
-`dependsOn("generateCapsuleContent")` (décision GREEN : tests utilisent
-`-x generateCapsuleContent` pour rester standalone, dependsOn préservé en
-prod). Clé `task.generateCapsuleTranscript.description` (24ème, 11
-`Messages_*.properties`). 3 functional tests créés. 917 unit VERT (baseline
-S-117 préservée), 67 functional VERT (+3 net : baseline 64 → 67), cucumber
-dédiés GREEN, `check` BUILD SUCCESSFUL 26m03s, Kover VERT, validatePlugins
-VERT, zéro régression, zéro secret, zéro bump BOM. EPIC CAP-TRANSCRIPT 5/6 US
-(US-0 ✅ S-114, US-1 ✅ S-115, US-2 ✅ S-116, US-3 ✅ S-117, US-4 ✅ S-118,
-US-5 TODO).
-_Prochaine session_ : 119 — CAP-TRANSCRIPT US-5 Cucumber BDD
-`capsule_transcript.feature` `@transcript` (4 scénarios) + runner dédié
-`CapsuleTranscriptCucumberRunner` + `CucumberTaskSpec("cucumberTestTranscript")`
-15ème. Baby-step BDD RED → GREEN → REFACTOR.
+== Contexte Hérité
 
-== Contexte reprise session 119 (post CAP-TRANSCRIPT US-4 S-118)
+Session 121 — **Intégration PR #1 "Fix/build toolchain et pipeline" (lion92)** :
+- Merge branche `pr-1` (8 commits) dans main
+- Conflit INDEX.adoc résolu (version S-120 conservée)
+- Contenu PR : fix build (conventions 0.0.3, JDK 25, exclusion Groovy 3),
+  fix i18n (namespace `capsule/i18n/Messages`), fix 4 défauts capture +
+  capture conteneur (Chromium --no-sandbox), feat CAP-ANIM
+  (`CaptureStrategy.REMOTION` + RemotionPlanner/RemotionCaptureImpl/
+  RemotionTemplate + Manim incrusté OffthreadVideo + AudioCodecs),
+  fix TTS économie d'encre
+- Fix post-merge baby-step TDD/BDD : `ScreenshotCaptureImpl.isAvailable()`
+  étendu pour vérifier ffmpeg (`isFfmpegAvailable()` probe `ffmpeg -version`)
+- Test functional + cucumber scénario #3 corrigés → "strictMode fails when
+  ffmpeg is unavailable"
+- Gate : 930 unit 0 FAIL (+13 RemotionPlannerTest), 67 functional 0 FAIL,
+  cucumberTestCaptureStrategy 3/3, cucumberTestTranscript 4/4
 
-- EPIC CAP-TRANSCRIPT (P2) — cadré US-0 S-114, US-1 ✅ S-115, US-2 ✅
-  S-116, US-3 ✅ S-117, US-4 ✅ S-118. 6 US ~12 pts. Domaine
-  `capsule.transcript` (11ème) : 8 fichiers prod. US-5 TODO (dernière US).
-  US-5 cible : Cucumber BDD `capsule_transcript.feature` `@transcript`
-  (4 scénarios : template strategy produces AsciiDoc article, LLM strategy
-  mock enriches article, disabled default skips task, output AsciiDoc valid
-  structure). Runner dédié `CapsuleTranscriptCucumberRunner` (pattern
-  S-082 `@SelectClasspathResource("features/capsule_transcript.feature")` +
-  filter `@transcript and not @wip and not @integration` + glue
-  `capsule.scenarios` + plugin pretty/html/json reports) +
-  `CapsuleTranscriptSteps` préfixés "transcript" (bug S-088 glue partagée) +
-  `CucumberTaskSpec("cucumberTestTranscript")` 15ème câblé `build.gradle.kts`
-  dans `cucumberConventions.additionalTasks` (après
-  `cucumberTestGlossaryContext` L153, avant `cucumberTestIntegration` L159).
-- `capsule.transcript.GenerateCapsuleTranscriptTask`
-  (`GenerateCapsuleTranscriptTask.kt`) — tâche S-118. Skip si output existe
-  ET non-blank. TEMPLATE/LLM dispatch. `-Pcapsule.transcript.enabled=true`
-  nécessaire (défaut `false`). Log `CAPSULE TRANSCRIPT →`.
-- `capsule.transcript.TranscriptLlmEnhancer`
-  (`TranscriptLlmEnhancer.kt`) — interface port `enhance(template,
-  plan): String`. Pattern `CapsuleLlm`. Consommé par
-  `generateCapsuleTranscript` (US-4) quand strategy=LLM.
-- `capsule.transcript.ChatModelTranscriptEnhancer`
-  (`ChatModelTranscriptEnhancer.kt`) — adapter `ChatModel`
-  langchain4j. Short-circuit si template blank. Fallback degraded si
-  LLM blank → template original.
-- `capsule.transcript.TranscriptBuilder` (`TranscriptBuilder.kt`) —
-  object pur `build(plan): String` template AsciiDoc déterministe.
-  Constantes `INTRO`/`OUTRO` publiques. MANIM segments skipped.
-- `capsule.transcript.TranscriptPromptBuilder`
-  (`TranscriptPromptBuilder.kt`) — object pur
-  `buildEnhancePrompt(plan): String` embed `TranscriptBuilder.build`
-  + rules. Consommé par `ChatModelTranscriptEnhancer`.
-- `TranscriptStrategy` enum (US-1) — `TEMPLATE` (défaut, assemble
-  AsciiDoc depuis segments, zéro LLM, déterministe) + `LLM` (enrichit
-  via `TranscriptLlmEnhancer`, requiert `LlmBuildService`).
-- 4 sources DSL `transcriptEnabled`/`transcriptStrategy` : ENV
-  `CAPSULE_TRANSCRIPT_ENABLED`/`_STRATEGY` < props
-  `capsule.transcript.enabled`/`.strategy` < YAML < CLI.
-- Version capsule : 0.0.1-SNAPSHOT (non publié Central). Consomme slider
-  0.0.16 (compileOnly), codebase-plugin 0.0.5 (implementation),
-  koog-agents 1.0.0, BOM 0.0.16, codebase-contracts 0.1.0,
-  i18n-contracts 0.0.2.
-- 917 unit VERT (S-118 baseline), 67 functional VERT (+3 S-118), cucumber
-  dédiés GREEN. Borough Détroit en maintenance. Tous les EPICs P0/P1
-  terminés. Reste P2 : CAP-TRANSCRIPT (US-5), CAP-CHAPITRE,
-  CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
+== Mission Session 122
+
+=== Cadrage EPIC CAP-ANIM (Remotion) post-merge
+
+La PR #1 a introduit un nouveau domaine `capsule.remotion` (4 fichiers prod :
+`RemotionCapture.kt`, `RemotionPlanner.kt`, `RemotionTemplate.kt`,
+`AudioCodecs.kt`) + `CaptureStrategy.REMOTION` (3ème valeur enum) +
+`RemotionConfig` dans `CapsuleConfig` (section `capsule.remotion.*` DSL 4
+sources). Ce code est **fonctionnel mais non cadré** — aucun EPIC BACKLOG ne
+le documente. Mission S-122 : cadrer formellement EPIC CAP-ANIM.
+
+*Étapes* :
+. Audit code Remotion (4 fichiers prod + RemotionPlannerTest + RemotionConfig)
+. Documenter dans BACKLOG : vision, domaine, US rétroactives (le code existe
+  déjà, l'EPIC documente ce qui a été livré par la PR)
+. Évaluer gaps : tests unit manquants sur RemotionCaptureImpl/RemotionTemplate/
+  AudioCodecs, pas de cucumber dédié `@anim @remotion`, pas de functional test
+. Décider : EPIC CAP-ANIM "TERMINÉ par PR #1" (documentation rétroactive) ou
+  EPIC CAP-ANIM "EN COURS" (gaps à combler : unit + cucumber + functional)
+
+=== Maintenance P2 (post-cadrage si temps restant)
+
+Reste P2 : CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
+
+== Points d'attention
+
+* Conventions 0.0.3 pas sur Central (mavenLocal seulement)
+* Namespace i18n : `capsule/i18n/Messages.properties` (PR #1 a déplacé)
+* `CaptureStrategy` a maintenant 3 valeurs : PLAYWRIGHT, SCREENSHOT, REMOTION
+* `ScreenshotCaptureImpl.isAvailable()` vérifie Chromium + ffmpeg (fix S-121)
+* `AudioCodecs` : codec selon conteneur (WebM=libvorbis, MP4=aac)
+* `PlaywrightCapture.outputExtension()` : abstrait l'extension de sortie
+* 930 unit VERT (baseline S-121), 67 functional VERT, cucumber dédiés GREEN
 
 == Rappels
 
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 917 unit VERT (S-118 baseline), 67 functional VERT, cucumber dédiés GREEN
+* 930 unit VERT (S-121 baseline), 67 functional VERT, cucumber dédiés GREEN
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
-* Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) +
-  steps préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
+* Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
+  préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
 * English only : code, Gherkin, commentaires
 * Économie d'encre = skip si artefact existe et valide (AGENT.adoc Loi)
 * Ports Ollama : 11437-11465 rotation (11434-11436 INTERDITS)
 * `CapsuleMessages` object (domaine `capsule.i18n`) — 11
-  `Messages*.properties` 10 langues, 24 keys (23 + transcript S-118)
-* DSL 4 sources pattern : ENV < props < YAML < CLI. Merger helpers
-  `mergeStr/mergeInt/mergeDouble/mergeBoolean/mergeStrList` +
-  `mergeVersioning`/`mergeCaptureStrategy`/`mergeOutputFormat`/
-  `mergeTranscriptStrategy` (enums)
-* 3 loaders domaine `capsule.context` : `DocContextLoader` (corpus
-  documentaire, CAP-DOCCONTEXT), `PedagogicalScenarioLoader` (scénario
-  pédagogique, CAP-SPD), `GlossaryLoader` (glossaire terminologique,
-  CAP-GLOSSARY). Tous object pur, mirror pattern, `ContextChannel.Docs.
-  truncateToTokens` pour la troncation budget.
-* Pattern object pur pour commande ffmpeg : `AudioPostCommand`
-  (`capsule.audio`), `SubtitleBurnInCommand` (`capsule`, CAP-27),
-  `FormatConversion` (`capsule`, CAP-MP4). `buildArgv(...)` sans I/O,
-  fully testable.
-* `capsule.feed.SlideSegment` (`CapsuleFeedModels.kt:22-33`) — `index`,
-  `title`, `speakerNote`, `type: SlideType`, `manimScene: String?`.
-  Invariants title/speakerNote non-blank. Source de vérité contenu
-  pédagogique. `TranscriptPlan` consomme `List<SlideSegment>` (pas
-  nouveau modèle).
-* 14 `CucumberTaskSpec` (`build.gradle.kts:29-166`). 15ème
-  `cucumberTestTranscript` (US-5) après `cucumberTestGlossaryContext` (L153)
-  avant `cucumberTestIntegration` (L159).
-* Domaine `capsule.transcript` (11ème) : 8 fichiers prod (TranscriptConfig
-  + TranscriptStrategy enum S-115, TranscriptPlan + TranscriptBuilder +
-  TranscriptPromptBuilder S-116, TranscriptLlmEnhancer +
-  ChatModelTranscriptEnhancer S-117, GenerateCapsuleTranscriptTask S-118).
-  4 objets purs (Builder + PromptBuilder + Plan data class + Task),
-  1 port + 1 adapter, 0 I/O dans le domaine, fully testable.
+  `Messages*.properties` 10 langues, 24 keys (namespace `capsule/i18n/`)
+* DSL 4 sources pattern : ENV < props < YAML < CLI
+* 3 loaders domaine `capsule.context` : `DocContextLoader`,
+  `PedagogicalScenarioLoader`, `GlossaryLoader`
+* Pattern object pur pour commande ffmpeg : `AudioPostCommand`,
+  `SubtitleBurnInCommand`, `FormatConversion`
+* `capsule.feed.SlideSegment` — source de vérité contenu pédagogique
+* `compileOnly(libs.slider)` conservé (runtime). `testImplementation(libs.slider)`
+  RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder)
+* Catalogue : `slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27
+* Domaine `capsule.transcript` (11ème) : 8 fichiers prod (CAP-TRANSCRIPT TERMINÉ)
+* Domaine `capsule.remotion` (12ème, PR #1) : 4 fichiers prod à documenter
+* CaptureStrategy 3 valeurs : PLAYWRIGHT (default), SCREENSHOT, REMOTION

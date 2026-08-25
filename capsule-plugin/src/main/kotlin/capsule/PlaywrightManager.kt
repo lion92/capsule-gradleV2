@@ -203,12 +203,28 @@ class ScreenshotCaptureImpl(
     override fun isAvailable(): Boolean = availabilityProbe ?: (
         try {
             ensureBrowser()
-            true
+            if (!isFfmpegAvailable()) {
+                logger.info("Screenshot capture unavailable: ffmpeg '{}' not executable", ffmpegPath)
+                false
+            } else {
+                true
+            }
         } catch (e: Exception) {
             logger.info("Screenshot capture unavailable: {}", e.message)
             false
         }
         ).also { availabilityProbe = it }
+
+    private fun isFfmpegAvailable(): Boolean = try {
+        val exit = ProcessBuilder(ffmpegPath, "-version")
+            .redirectErrorStream(true)
+            .redirectOutput(File.createTempFile("ffmpeg-probe", ".log").apply { deleteOnExit() })
+            .start()
+            .waitFor()
+        exit == 0
+    } catch (e: Exception) {
+        false
+    }
 
     override fun name(): String = "screenshot+ffmpeg"
 

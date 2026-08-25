@@ -4,6 +4,8 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import org.gradle.testkit.runner.GradleRunner
+import org.gradle.testkit.runner.UnexpectedBuildFailure
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 /**
@@ -16,13 +18,14 @@ import org.junit.jupiter.api.io.TempDir
  * Three scenarios:
  * 1. strategy=PLAYWRIGHT (default) — backward compat, existing behavior.
  * 2. strategy=SCREENSHOT + NoOp fallback (screenshot unavailable) — WebM produced.
- * 3. strategy=SCREENSHOT + strictMode — build succeeds when Playwright is available.
+ * 3. strategy=SCREENSHOT + strictMode + ffmpeg unavailable — build fails
+ *    (screenshot requires both Playwright and ffmpeg; strict mode refuses NoOp).
  *
  * Note: the "screenshot unavailable + strict → fail" scenario is covered by
  * `CaptureResolverTest` (unit tests) because forcing `ScreenshotCaptureImpl.isAvailable()`
  * to return false requires either mocking or uninstalling Playwright, which is
- * environment-dependent. The functional test #3 verifies the happy path (strict
- * mode does not block a genuinely available screenshot engine).
+ * environment-dependent. The functional test #3 verifies that strict mode
+ * correctly rejects the NoOp fallback when ffmpeg is unavailable.
  */
 class CaptureStrategyFunctionalTest {
 
@@ -106,7 +109,7 @@ class CaptureStrategyFunctionalTest {
     }
 
     @Test
-    fun `strategy SCREENSHOT with strictMode succeeds when Playwright is available`() {
+    fun `strategy SCREENSHOT with strictMode fails when ffmpeg is unavailable`() {
         setupBuild("""
             capsule {
                 ttsEngine = "noop"
@@ -119,21 +122,18 @@ class CaptureStrategyFunctionalTest {
         """.trimIndent())
         writeScriptAndDeck()
 
-        val result = GradleRunner.create()
-            .forwardOutput()
-            .withPluginClasspath()
-            .withArguments("generateCapsuleVideo")
-            .withProjectDir(projectDir)
-            .build()
+        val exception = assertThrows<UnexpectedBuildFailure> {
+            GradleRunner.create()
+                .forwardOutput()
+                .withPluginClasspath()
+                .withArguments("generateCapsuleVideo")
+                .withProjectDir(projectDir)
+                .build()
+        }
 
-        val capFile = projectDir.resolve("build/capsules/test.webm")
         assertTrue(
-            capFile.exists(),
-            "Video must be produced when screenshot strategy is available even in strict mode"
-        )
-        assertTrue(
-            result.output.contains("screenshot strategy"),
-            "Expected log to mention screenshot strategy, got: ${result.output}"
+            exception.message!!.contains("screenshot is not available"),
+            "Expected strict mode to reject screenshot when ffmpeg is unavailable, got: ${exception.message}"
         )
     }
 }

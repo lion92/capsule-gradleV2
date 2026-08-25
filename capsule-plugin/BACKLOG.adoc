@@ -1,6 +1,6 @@
 = BACKLOG — capsule-gradle (Détroit)
 :toc:
-:last_update: 2026-08-14 (Session 118 — **CAP-TRANSCRIPT US-4 tâche `generateCapsuleTranscript` + wiring**. Tâche Gradle `@DisableCachingByDefault` : groupe `generate`, `@InputFile speakerNotesFile` `@PathSensitive(RELATIVE)`, `@Input language`, `@Input strategy: Property<TranscriptStrategy>`, `@OutputFile transcriptOutput` (`build/capsule/<deckName>-transcript.adoc`), `@Optional @ServiceReference llmService` (strategy=LLM → `project.aiProvider` + `resolveModel` + `ChatModelTranscriptEnhancer`). Économie d'encre skip si output existe ET non-blank. Wiring `CapsuleManager.registerGenerateTranscriptTask` + `dependsOn("generateCapsuleContent")` (tests `-x generateCapsuleContent` standalone). Clé `task.generateCapsuleTranscript.description` 24ème 11 `Messages*.properties`. 3 functional `GenerateCapsuleTranscriptFunctionalTest` (registration, TEMPLATE déterministe, LLM mock `/api/chat`). Baby-step TDD RED → GREEN → REFACTOR. 917 unit VERT baseline S-117, 67 functional VERT +3 net, cucumber dédiés GREEN, `check` BUILD SUCCESSFUL 26m03s, Kover VERT, validatePlugins VERT, zéro régression, zéro secret, zéro bump BOM. EPIC CAP-TRANSCRIPT 5/6 US.)
+:last_update: 2026-08-25 (Session 121 — **Intégration PR #1 (lion92)** + fix ScreenshotCaptureImpl. Merge branche `pr-1` (8 commits) : fix build (conventions 0.0.3, JDK 25, exclusion Groovy 3), fix i18n (namespace `capsule/i18n/Messages`), fix 4 défauts capture + capture conteneur (Chromium --no-sandbox), feat CAP-ANIM (`CaptureStrategy.REMOTION` + RemotionPlanner/RemotionCaptureImpl/RemotionTemplate + Manim incrusté OffthreadVideo + AudioCodecs), fix TTS économie d'encre. Fix post-merge baby-step TDD/BDD : `ScreenshotCaptureImpl.isAvailable()` étendu vérifier ffmpeg. CAP-TRANSCRIPT US-5 ✅ TERMINÉ S-119. EPIC CAP-ANIM ajouté BACKLOG. Gate : 930 unit 0 FAIL, 67 functional 0 FAIL, cucumber dédiés GREEN.)
 
 '''
 == 📦 Publication Maven Central ✅
@@ -1484,7 +1484,7 @@ CAP-PROVENANCE TERMINÉ 3/3 US (S-108)** — domaine `capsule.context` clos
 BUILD SUCCESSFUL : 834 unit (+15) + 62 functional (+2) + 3 cucumber
 `capsule_provenance.feature` GREEN. Zéro régression, zéro secret.
 
-=== 🟡 EPIC CAP-TRANSCRIPT — Reverse pipeline capsule → article AsciiDoc (Session 114 — Cadrage US-0, EN COURS 5/6 US)
+=== ✅ EPIC CAP-TRANSCRIPT — Reverse pipeline capsule → article AsciiDoc (TERMINÉ 6/6 US, S-114→S-119)
 
 _Vision_ : Le stagiaire révisionne en lecture, pas vidéo. `generateCapsuleTranscript`
 produit un article AsciiDoc depuis les speaker notes + slide titles + metadata
@@ -1711,7 +1711,7 @@ _Décisions architecturales (12)_ :
   `CucumberTaskSpec("cucumberTestTranscript")` 15ème câblé `build.gradle.kts`.
   Baby-step BDD RED → GREEN → REFACTOR.
 | 2
-| ⬜ TODO
+| ✅ TERMINÉ (S-119)
 |===
 
 _Total_ : 6 US (US-0 cadrage + US-1→5), ~12 pts. _Méthode_ : baby-step
@@ -1719,8 +1719,81 @@ DDD/TDD/BDD, 3 niveaux tests/US (unit → functional → cucumber), English only
 code/Gherkin. _Pattern de référence_ : `capsule.audio` (AudioPostConfig +
 AudioPostProcessor port/adapter + factory + wiring + cucumber), `capsule.validation`
 (ValidationConfig + merger 2 champs + cucumber runner dédié). _Statut_ :
-US-0 ✅ TERMINÉ (S-114), US-1 ✅ TERMINÉ (S-115), US-2 ✅ TERMINÉ (S-116),
-US-3 ✅ TERMINÉ (S-117), US-4 ✅ TERMINÉ (S-118), US-5 TODO.
+**EPIC CAP-TRANSCRIPT TERMINÉ 6/6 US** — US-0 ✅ TERMINÉ (S-114), US-1 ✅ TERMINÉ
+(S-115), US-2 ✅ TERMINÉ (S-116), US-3 ✅ TERMINÉ (S-117), US-4 ✅ TERMINÉ
+(S-118), US-5 ✅ TERMINÉ (S-119). Domaine `capsule.transcript` (11ème) clos
+(8 fichiers prod). 917 unit + 67 functional + 4 cucumber transcript GREEN.
+
+=== 🎬 EPIC CAP-ANIM — Stratégie capture Remotion (animations vidéo) — INTÉGRÉ PAR PR #1 (S-121)
+
+_Vision_ : `CaptureStrategy` (PLAYWRIGHT/SCREENSHOT) couvre l'enregistrement
+temps réel et la capture par screenshots. `CaptureStrategy.REMOTION` ajoute
+une 3ème stratégie : composition image par image via Remotion (React),
+permettant des animations complexes (cascade, dérive, fondu, progressbar) +
+incrustation Manim (`OffthreadVideo`). Le rendu peut produire du MP4/H.264
+en plus du WebM natif.
+
+_Code livré par PR #1 (lion92, S-121 merge)_ :
+
+* `CaptureStrategy` enum étendu 3ème valeur `REMOTION` (companion `fromString`
+  fallback `PLAYWRIGHT` backward compat)
+* `RemotionConfig` dans `CapsuleConfig` (section `capsule.remotion.*` DSL 4
+  sources : `projectDir`, `nodeExecutablePath`, `concurrency`, `fps`)
+* `RemotionPlanner` (object pur, 157 lignes) — planifie la composition
+  image par image
+* `RemotionCaptureImpl` (194 lignes) — implémente `PlaywrightCapture`,
+ bridge Node.js ProcessBuilder
+* `RemotionTemplate` (94 lignes) — templates React embarqués (cascade,
+  dérive, fondu, progressbar)
+* `AudioCodecs` (21 lignes) — codec selon conteneur (WebM=libvorbis,
+  MP4=aac)
+* `PlaywrightCapture.outputExtension()` — abstrait l'extension de sortie
+  (WebM ou MP4 selon stratégie)
+* `CaptureResolver.RemotionFactory` fun interface + dispatch `when(strategy)
+  REMOTION -> remotionFactory.create()`
+* `RemotionPlannerTest` (9 unit tests)
+* `CapsuleVideoTask.resolvePlaywrightCapture` étendu `remotionFactory` lambda
+
+_Gaps identifiés (à combler S-122+)_ :
+
+* Tests unit manquants sur `RemotionCaptureImpl` (194 lignes, 0 test)
+* Tests unit manquants sur `RemotionTemplate` (94 lignes, 0 test)
+* Tests unit manquants sur `AudioCodecs` (21 lignes, 0 test)
+* Pas de functional test Remotion
+* Pas de cucumber dédié `@anim @remotion`
+* `RemotionConfig` merger 4 sources — vérifier wiring complet
+* `isAvailable()` Remotion — vérifier Node.js disponibilité
+
+[cols="1,3,2,2", options="header"]
+|===
+| US | Description | Pts | Statut
+
+| CAP-ANIM-0
+| *Cadrage EPIC rétroactif* — audit code Remotion (4 fichiers prod + 9 unit
+  `RemotionPlannerTest`), documenter vision + architecture + gaps. Évaluer
+  si EPIC "TERMINÉ par PR #1" (documentation rétroactive) ou "EN COURS"
+  (gaps à combler).
+| 1
+| 🟡 À FAIRE (S-122)
+
+| CAP-ANIM-1
+| *Tests unit manquants* — `RemotionCaptureImpl` (194 lignes, 0 test),
+  `RemotionTemplate` (94 lignes, 0 test), `AudioCodecs` (21 lignes, 0 test).
+  Baby-step TDD : ~15-20 unit.
+| 3
+| 🟡 À FAIRE
+
+| CAP-ANIM-2
+| *Functional test + Cucumber BDD* — `capsule_remotion.feature` `@anim
+  @remotion` (scénarios : strategy REMOTION dispatch, NoOp fallback when
+  Node.js unavailable, RemotionConfig DSL 4 sources, outputExtension MP4).
+  Runner dédié + steps préfixés "remotion" + `CucumberTaskSpec`.
+| 3
+| 🟡 À FAIRE
+|===
+
+_Total_ : 3 US, ~7 pts. _Statut_ : code livré par PR #1 (S-121), documentation
++ gaps à combler. Domaine `capsule.remotion` (12ème).
 
 === 📸 EPIC CAP-CR3-3 — Branchement ScreenshotCapture (alternative configurable) — TERMINÉ 5/5 US (S-096)
 
@@ -2733,8 +2806,8 @@ _Total_ : 3 US, ~4 pts.
 | CAP-TRANSCRIPT
 | 6
 | 12
-| 🟡 P2
-| 🟡 US-0 ✅ (S-114), US-1 ✅ (S-115), US-2 ✅ (S-116), US-3 ✅ (S-117), US-4 ✅ (S-118), US-5 TODO
+| ✅ P2 TERMINÉ
+| ✅ TERMINÉ 6/6 US (S-114→S-119)
 
 | Post-prod
 | CAP-CR3-1
@@ -2784,6 +2857,13 @@ _Total_ : 3 US, ~4 pts.
 | 4
 | 🟡 P2
 | ⬜ TODO
+
+| Capture
+| CAP-ANIM
+| 3
+| 7
+| 🟡 P2
+| 🟡 Code livré par PR #1 (S-121) — gaps tests à combler (US-0 cadrage, US-1 unit, US-2 cucumber)
 |===
 
 _Total_ : 11 EPICs, 48 US, ~90 pts. _Séquence MVP0 recommandée_ :
@@ -2796,6 +2876,6 @@ _Total_ : 11 EPICs, 48 US, ~90 pts. _Séquence MVP0 recommandée_ :
 . CAP-GLOSSARY (P1 — vocabulaire référentiel)
 . CAP-PROVENANCE (P1 — anti-hallucination) ✅
 . CAP-CHAPITRE (P2 — navigabilité 32 capsules)
-. CAP-TRANSCRIPT (P2 — livrable révision article) 🟡 5/6 US (US-5 cucumber en cours)
+. CAP-TRANSCRIPT (P2 — livrable révision article) ✅ TERMINÉ 6/6 US (S-119)
 . CAP-PODCAST (P2 — mobilité)
 . CAP-PREVIEW (P2 — itération contenu)

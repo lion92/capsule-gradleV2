@@ -5,6 +5,7 @@ import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 import org.gradle.testkit.runner.GradleRunner
+import org.gradle.testkit.runner.UnexpectedBuildFailure
 import org.junit.jupiter.api.Assertions
 import java.io.File
 
@@ -20,6 +21,7 @@ class CapsuleCaptureStrategySteps {
 
     private var projectDir: File? = null
     private var buildOutput: String = ""
+    private var buildFailure: Throwable? = null
 
     @Given("a Capsule capture strategy Gradle project with the capsule plugin applied")
     fun aCapsuleCaptureStrategyGradleProjectWithTheCapsulePluginApplied() {
@@ -99,18 +101,37 @@ class CapsuleCaptureStrategySteps {
     }
 
     private fun runCaptureStrategyBuild() {
-        val result = GradleRunner.create()
-            .forwardOutput()
-            .withPluginClasspath()
-            .withArguments("generateCapsuleVideo")
-            .withProjectDir(projectDir!!)
-            .build()
-        buildOutput = result.output
+        try {
+            val result = GradleRunner.create()
+                .forwardOutput()
+                .withPluginClasspath()
+                .withArguments("generateCapsuleVideo")
+                .withProjectDir(projectDir!!)
+                .build()
+            buildOutput = result.output
+        } catch (e: UnexpectedBuildFailure) {
+            buildOutput = e.message ?: ""
+            buildFailure = e
+        }
     }
 
     @Then("the capture strategy build succeeds")
     fun theCaptureStrategyBuildSucceeds() {
-        // If we reach here, the build succeeded (GradleRunner.build() throws on failure)
+        Assertions.assertNull(buildFailure, "Build was expected to succeed but failed: $buildOutput")
+    }
+
+    @Then("the capture strategy build fails")
+    fun theCaptureStrategyBuildFails() {
+        Assertions.assertNotNull(buildFailure, "Build was expected to fail but succeeded: $buildOutput")
+    }
+
+    @And("the capture strategy failure message contains {string}")
+    fun theCaptureStrategyFailureMessageContains(text: String) {
+        Assertions.assertNotNull(buildFailure, "Build was expected to fail but succeeded")
+        Assertions.assertTrue(
+            buildOutput.contains(text),
+            "Expected failure message to contain '$text', got: $buildOutput"
+        )
     }
 
     @And("the capture strategy output mentions {string}")

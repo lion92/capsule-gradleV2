@@ -1,0 +1,128 @@
+= Session 121 — Intégration PR #1 (lion92) + fix ScreenshotCaptureImpl
+
+_Date_ : 2026-08-25
+_Type_ : merge + fix + TDD/BDD
+_Score_ : 9/10
+
+== Mission
+
+Intégrer la PR #1 "Fix/build toolchain et pipeline" (lion92, 8 commits,
+branche `pr-1`) dans main + vérifier cohérence post-merge + corriger les
+régressions introduites par la PR.
+
+== Merge PR #1
+
+`git merge --no-ff pr-1` — conflit sur `capsule-plugin/.agents/INDEX.adoc`
+(en-tête) résolu manuellement : version S-120 conservée (plus récente),
+corrections de la PR intégrées (session 119 dupliquée retirée).
+
+=== Commits intégrés (8)
+
+. `5e86e90` fix(build) — conventions 0.0.2 → 0.0.3 (toolchain Java 25) + CI
+  JDK 25 + exclusion Groovy 3 `testRuntimeClasspath { exclude(group =
+  "org.codehaus.groovy") }`
+. `5477d62` fix(i18n) — namespace bundle `i18n/Messages` →
+  `capsule/i18n/Messages` (conflit classpath avec slider) + 10 langues
+  complétées (task.group.verification + validateCapsuleVideoDuration.description)
+. `253d104` fix(video) — 4 défauts capture : narration double (injectSubtitleTrack
+  réinjectait AUDIO_INJECT_SCRIPT), vidéo tronquée SCREENSHOT (listFiles .first()
+  prenait slide-N.webm au lieu de capsule.webm), parallelCapture ne produisait
+  rien (cherchait "slide.webm" inexistant), ffmpeg hardcodé ignorait
+  ffmpegExecutablePath
+. `846b13a` docs — réaligne READMEs + INDEX + session 119 sur code réel
+. `b495253` fix(video) — capture fonctionnelle conteneur : Chromium --no-sandbox,
+  navigateur unique par instance (pas 1/diapo), encodage PNG→WebM parallèle,
+  reveal.js CDN supprimé (mono-diapo), FFmpeg stderr→log file
+. `671b886` feat(anim) — **CAP-ANIM** stratégie `CaptureStrategy.REMOTION` :
+  composition image par image (cascade, dérive, fondu, progressbar), React
+  embarqué jar, `RemotionPlanner`/`RemotionCaptureImpl`/`RemotionTemplate`,
+  section `capsule.remotion.*` DSL 4 sources, `RemotionConfig` dans `CapsuleConfig`
+. `5cee4b2` feat(anim) — Remotion MP4/H.264 + Manim incrusté (`OffthreadVideo`),
+  `PlaywrightCapture.outputExtension()`, `AudioCodecs` codec selon conteneur
+. `6a1cd63` fix(tts) — generateCapsule ne réécrit plus narration existante
+  (CapsuleBuildTask.synthesize appelait engine.synthesize sans condition)
+
+== Fix post-merge baby-step TDD/BDD
+
+=== Constat
+
+`ScreenshotCaptureImpl.isAvailable()` (PlaywrightManager.kt:203) ne vérifiait
+que Chromium/Playwright, pas ffmpeg. Avec `ffmpegPath="noop"`,
+`isAvailable()` retournait `true`, puis `capture()` crash avec
+`IOException: Cannot run program "noop"`.
+
+La PR #1 a rendu `ScreenshotCaptureImpl` fonctionnel (ffmpeg PNG→WebM réel),
+mais n'a pas étendu `isAvailable()` pour vérifier ffmpeg.
+
+=== Fix RED → GREEN
+
+*RED* : `functionalTest` — 1 FAIL `CaptureStrategyFunctionalTest` "strictMode
+succeeds" (ffmpeg "noop" inexistant → `IOException`).
+
+*GREEN* :
+. `ScreenshotCaptureImpl.isAvailable()` étendu — ajoute
+  `isFfmpegAvailable()` qui probe `ffmpeg -version` via ProcessBuilder.
+  Si ffmpeg inexistant → `isAvailable()` retourne `false` → `CaptureResolver`
+  fallback NoOpPlaywrightCapture (non-strict) ou `StrictModeGuard` throw
+  (strict).
+. Test functional `CaptureStrategyFunctionalTest` scénario #3 corrigé :
+  "strictMode succeeds" → "strictMode fails when ffmpeg is unavailable"
+  (`assertThrows<UnexpectedBuildFailure>` + message "screenshot is not
+  available").
+. Cucumber `capsule_capture_strategy.feature` scénario #3 corrigé :
+  "strictMode succeeds" → "strictMode fails when ffmpeg is unavailable"
+  + steps `the capture strategy build fails` + `the capture strategy
+  failure message contains {string}` ajoutés dans `CapsuleCaptureStrategySteps`.
+  `runCaptureStrategyBuild()` étendu pour catch `UnexpectedBuildFailure` +
+  stocker `buildFailure`.
+
+*REFACTOR* : `isFfmpegAvailable()` private helper (pattern `runFfmpeg`),
+temp file `deleteOnExit()`, `availabilityProbe` cache préservé.
+
+== Gate
+
+* `compileKotlin` VERT
+* `compileTestKotlin` VERT
+* `test` 930 unit 0 FAIL (+13 net baseline 917 → 930, `RemotionPlannerTest`
+  ajouté par PR)
+* `functionalTest` 67 tests 0 FAIL (1 test corrigé)
+* `cucumberTestTranscript` 4/4 PASSED
+* `cucumberTestCaptureStrategy` 3/3 PASSED
+* `check` en cours (cucumber integration long)
+
+== Fichiers modifiés
+
+* `capsule-plugin/src/main/kotlin/capsule/PlaywrightManager.kt` —
+  `isAvailable()` étendu + `isFfmpegAvailable()` ajouté (fix S-121)
+* `capsule-plugin/src/functionalTest/kotlin/capsule/CaptureStrategyFunctionalTest.kt` —
+  scénario #3 corrigé (strictMode fails)
+* `capsule-plugin/src/test/kotlin/capsule/scenarios/CapsuleCaptureStrategySteps.kt` —
+  steps `build fails`/`failure message contains` ajoutés + `runCaptureStrategyBuild` catch
+* `capsule-plugin/src/test/features/capsule_capture_strategy.feature` —
+  scénario #3 corrigé
+* `capsule-plugin/.agents/INDEX.adoc` — en-tête S-121 + table sessions
+* `capsule-plugin/.agents/SESSIONS_HISTORY.adoc` — entrée S-121
+* `capsule-plugin/PROMPT_REPRISE.adoc` — mission S-122 (cadrage CAP-ANIM)
+
+== Décisions
+
+. Conflit INDEX.adoc : version S-120 conservée (plus récente que S-119 PR)
+. `isAvailable()` doit vérifier TOUTES les dépendances externes (Chromium +
+  ffmpeg pour SCREENSHOT, pas seulement Chromium)
+. Test strictMode + ffmpeg absent : valide l'échec (pas le succès) —
+  strictMode refuse NoOp fallback, c'est le contrat CAP-CR3-2
+. EPIC CAP-ANIM à cadrer S-122 (code livré par PR, documentation rétroactive)
+
+== EPICs
+
+* EPIC CAP-ANIM (Remotion) — NON CADRÉ. Code livré par PR #1 (4 fichiers prod
+  + RemotionPlannerTest + RemotionConfig + CaptureStrategy.REMOTION).
+  Mission S-122 : documenter rétroactivement dans BACKLOG + évaluer gaps
+  (unit manquants sur RemotionCaptureImpl/RemotionTemplate/AudioCodecs,
+  pas de cucumber `@anim @remotion`, pas de functional test).
+
+== Zéro
+
+* Zéro secret
+* Zéro bump BOM (conventions 0.0.3 mavenLocal, BOM 0.0.27 déjà en place)
+* Zéro publication

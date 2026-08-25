@@ -1,5 +1,30 @@
 = COMPLETED_TASKS_ARCHIVE — Août 2026
-:date: 2026-08-14
+:date: 2026-08-25
+
+== Session 121 — Intégration PR #1 (lion92) + fix ScreenshotCaptureImpl ✅
+
+Merge branche `pr-1` (8 commits) dans main. Conflit INDEX.adoc résolu.
+Contenu PR : fix build (conventions 0.0.3, JDK 25, exclusion Groovy 3),
+fix i18n (namespace `capsule/i18n/Messages`), fix 4 défauts capture +
+capture conteneur (Chromium --no-sandbox), feat CAP-ANIM
+(`CaptureStrategy.REMOTION` + RemotionPlanner/RemotionCaptureImpl/
+RemotionTemplate + Manim incrusté OffthreadVideo + AudioCodecs), fix TTS
+économie d'encre.
+
+Fix post-merge baby-step TDD/BDD : `ScreenshotCaptureImpl.isAvailable()`
+étendu pour vérifier ffmpeg (`isFfmpegAvailable()` probe `ffmpeg -version`).
+Test functional + cucumber scénario #3 corrigés → "strictMode fails when
+ffmpeg is unavailable".
+
+Gate : 930 unit 0 FAIL (+13 RemotionPlannerTest), 67 functional 0 FAIL,
+cucumberTestCaptureStrategy 3/3, cucumberTestTranscript 4/4.
+
+== Session 120 — EPIC MEMPHIS-BOM-FIX US-5 TERMINÉ ✅
+
+Cross-borough MEMPHIS + Queens. Catalogue capsule fixé : `slider` →
+`slider-plugin`, slider 0.0.16 → 0.0.18, codebase 0.0.8 → 0.0.10, BOM
+0.0.16 → 0.0.27. Bug Groovy 3.x transitif résolu. CAP-TRANSCRIPT EPIC
+TERMINÉ 6/6 US.
 
 == Session 118 — CAP-TRANSCRIPT US-4 tâche generateCapsuleTranscript + wiring ✅
 
