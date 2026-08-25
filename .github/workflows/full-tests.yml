@@ -13,10 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 24
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '24'
+          java-version: '25'
           distribution: 'temurin'
           cache: gradle
 
@@ -38,8 +38,12 @@ jobs:
         env:
           CI: "true"
 
-      - name: Run duration validation task (video solidity contract)
-        run: ./gradlew validateCapsuleVideoDuration -Pcapsule.validation.durationEnabled=true -Pcapsule.validation.toleranceSecs=2.0
+      # `validateCapsuleVideoDuration` is a task the *consumer* project gets when it
+      # applies education.cccp.capsule — the plugin project itself never applies it,
+      # so invoking it here always failed with "task not found". The video solidity
+      # contract is covered by its dedicated Cucumber runner instead.
+      - name: Run duration validation scenarios (video solidity contract)
+        run: ./gradlew cucumberTestDurationValidation -PrunCucumber
         working-directory: capsule-plugin
         env:
           CI: "true"
