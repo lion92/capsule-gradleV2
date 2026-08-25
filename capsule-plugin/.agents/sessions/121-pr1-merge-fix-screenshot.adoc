@@ -85,24 +85,48 @@ temp file `deleteOnExit()`, `availabilityProbe` cache préservé.
 * `compileTestKotlin` VERT
 * `test` 930 unit 0 FAIL (+13 net baseline 917 → 930, `RemotionPlannerTest`
   ajouté par PR)
-* `functionalTest` 67 tests 0 FAIL (1 test corrigé)
+* `functionalTest` 67 tests 0 FAIL (1 test corrigé, 1 Playwright skipped par défaut)
 * `cucumberTestTranscript` 4/4 PASSED
 * `cucumberTestCaptureStrategy` 3/3 PASSED
-* `check` en cours (cucumber integration long)
+* `cucumberTestIntegration` skippé par défaut (gate Playwright)
+* `check` non complété (integration long — gates clés VERTS)
+
+== Gate Playwright — tests ignorés par défaut (trop longs)
+
+`PlaywrightTestGuard` (pure domain, mirror `CucumberTestGuard` CR-10) +
+`PlaywrightTestAssumption` (JUnit5 `assumeTrue` helper) + gate
+`cucumberTestIntegration onlyIf` dans `build.gradle.kts`.
+
+* **Défaut** : tests Playwright skippés (Chromium headless 15-30 min)
+* **Override** : `-PrunPlaywrightTests` ou `CI=true`
+* Tests NoOp (NoOpPlaywrightCapture, noop TTS) restent actifs par défaut
+* Appliqué à : `CaptureStrategyFunctionalTest` scénario #1 (PLAYWRIGHT default)
+  + `cucumberTestIntegration` task
+* `PlaywrightTestGuardTest` 7/7 PASSED (pure domain, pattern CR-10)
 
 == Fichiers modifiés
 
 * `capsule-plugin/src/main/kotlin/capsule/PlaywrightManager.kt` —
   `isAvailable()` étendu + `isFfmpegAvailable()` ajouté (fix S-121)
+* `capsule-plugin/src/main/kotlin/capsule/ci/PlaywrightTestGuard.kt` (nouveau) —
+  pure domain mirror CucumberTestGuard CR-10
+* `capsule-plugin/src/test/kotlin/capsule/ci/PlaywrightTestGuardTest.kt` (nouveau) —
+  7 unit tests
+* `capsule-plugin/src/functionalTest/kotlin/capsule/test/PlaywrightTestAssumption.kt` (nouveau) —
+  JUnit5 assumeTrue helper
 * `capsule-plugin/src/functionalTest/kotlin/capsule/CaptureStrategyFunctionalTest.kt` —
-  scénario #3 corrigé (strictMode fails)
+  scénario #1 assumePlaywrightAvailable (skipped défaut) + scénario #3 corrigé
 * `capsule-plugin/src/test/kotlin/capsule/scenarios/CapsuleCaptureStrategySteps.kt` —
-  steps `build fails`/`failure message contains` ajoutés + `runCaptureStrategyBuild` catch
+  steps `build fails`/`failure message contains` + catch UnexpectedBuildFailure
 * `capsule-plugin/src/test/features/capsule_capture_strategy.feature` —
   scénario #3 corrigé
+* `capsule-plugin/build.gradle.kts` — gate `cucumberTestIntegration onlyIf`
 * `capsule-plugin/.agents/INDEX.adoc` — en-tête S-121 + table sessions
 * `capsule-plugin/.agents/SESSIONS_HISTORY.adoc` — entrée S-121
 * `capsule-plugin/PROMPT_REPRISE.adoc` — mission S-122 (cadrage CAP-ANIM)
+* `capsule-plugin/BACKLOG.adoc` — EPIC CAP-ANIM + CAP-TRANSCRIPT US-5 sync + gate Playwright
+* `capsule-plugin/.agents/archives/COMPLETED_TASKS_ARCHIVE_2026-08.adoc` — entrées S-120/S-121
+* `capsule-plugin/.agents/TEST_COVERAGE_ANALYSIS.adoc` — couverture S-121
 
 == Décisions
 

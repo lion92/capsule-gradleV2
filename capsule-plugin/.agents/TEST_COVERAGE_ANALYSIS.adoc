@@ -1,23 +1,29 @@
 = TEST_COVERAGE_ANALYSIS — capsule-gradle
-:date: 2026-08-14
-:session: 118 CAP-TRANSCRIPT US-4 tâche generateCapsuleTranscript + wiring
+:date: 2026-08-25
+:session: 121 Intégration PR #1 + fix ScreenshotCaptureImpl + gate Playwright
 
-== Couverture — 14 août 2026 (après session 118 CAP-TRANSCRIPT US-4 tâche generateCapsuleTranscript)
+== Couverture — 25 août 2026 (après session 121)
 
-.Modifications session 118 — CAP-TRANSCRIPT US-4 (tâche + wiring, 3 functional)
+.Modifications session 121 — Intégration PR #1 + fix + gate Playwright
 |===
 | Fichier | Changement | Tests ajoutés
-| `capsule/transcript/GenerateCapsuleTranscriptTask.kt` (nouveau) | Tâche Gradle `@DisableCachingByDefault` : `@InputFile speakerNotesFile` `@PathSensitive(RELATIVE)` + `@Input language` + `@Input strategy: Property<TranscriptStrategy>` + `@OutputFile transcriptOutput` + `@Optional @ServiceReference llmService: Property<LlmBuildService>`. TaskAction : skip si output existe ET non-blank (économie d'encre) ; check speakerNotesFile.exists() ; deckName = removeSuffix("-speaker-notes") ; parse `AsciidocSpeakerNoteParser` → `CapsuleScript` → `TranscriptPlan` ; TEMPLATE → `TranscriptBuilder.build` ; LLM → `project.aiProvider` + `resolveModel` + `ChatModelTranscriptEnhancer.enhance` ; write + log `CAPSULE TRANSCRIPT →`. | +3 functional `GenerateCapsuleTranscriptFunctionalTest` (registration groupe generate ; TEMPLATE déterministe `build/capsule/demo-transcript.adoc` ; LLM mock `/api/chat` enrichi + ≥1 appel)
-| `capsule/CapsuleManager.kt` (modifié +44) | `registerGenerateTranscriptTask` après `registerGenerateCapsuleContentTask` — groupe generate, description i18n, `dependsOn("generateCapsuleContent")`, conventions language `deck.language`?:`fr`, strategy extension?:CLI, speakerNotesFile 1er `*-speaker-notes.adoc` dans build/capsule/, transcriptOutput map `capsule/<deckName>-transcript.adoc`, llmService + usesService. | 0 (wiring pur — couvert par functional)
-| `src/main/resources/i18n/Messages*.properties` (11 modifiés) | Clé `task.generateCapsuleTranscript.description` (24ème) base + en + fr/zh/hi/es/ar/bn/pt/ru/ur. | 0 (i18n — couvert par `CapsuleMessagesTest` 23×10 langues existant)
-| `src/functionalTest/kotlin/capsule/transcript/GenerateCapsuleTranscriptFunctionalTest.kt` (nouveau) | 3 functional tests RED → GREEN — pattern `GenerateCapsuleContentFunctionalTest` mirror : mock HTTP `/api/chat` (réponse enrichie, compteur calls) + `-Pollama.baseUrl` + `-x generateCapsuleContent` (speaker notes pré-écrits, standalone) + vérifs output AsciiDoc. | +3 functional
+| `capsule/PlaywrightManager.kt` (modifié) | `ScreenshotCaptureImpl.isAvailable()` étendu — `isFfmpegAvailable()` probe `ffmpeg -version` via ProcessBuilder. Fix post-merge PR #1 : `ffmpegPath="noop"` retournait `true` (Chromium seul vérifié) puis `capture()` crash `IOException`. | 0 (couvert par functional `CaptureStrategyFunctionalTest` scénario #3 corrigé)
+| `capsule/ci/PlaywrightTestGuard.kt` (nouveau) | Pure domain mirror `CucumberTestGuard` (CR-10). Décide si tests Playwright (Chromium réel) doivent tourner : `-PrunPlaywrightTests` ou `CI=true`. | +7 unit `PlaywrightTestGuardTest`
+| `capsule/test/PlaywrightTestAssumption.kt` (nouveau, functionalTest) | JUnit5 helper `assumePlaywrightAvailable()` — `assumeTrue` skip par défaut. | 0 (helper — couvert par `CaptureStrategyFunctionalTest` scénario #1 skipped)
+| `CaptureStrategyFunctionalTest.kt` (modifié) | Scénario #1 `assumePlaywrightAvailable()` (skipped par défaut). Scénario #3 corrigé "strictMode fails when ffmpeg unavailable" (`assertThrows`). | 0 (3 tests existants, 1 skipped + 2 PASSED)
+| `CapsuleCaptureStrategySteps.kt` (modifié) | Steps `build fails`/`failure message contains` + `runCaptureStrategyBuild` catch `UnexpectedBuildFailure`. | 0 (cucumber — 3/3 PASSED)
+| `capsule_capture_strategy.feature` (modifié) | Scénario #3 "strictMode fails when ffmpeg unavailable". | 0 (3 scénarios existants)
+| `build.gradle.kts` (modifié) | Gate `cucumberTestIntegration onlyIf { shouldRunPlaywright }` (Playwright + ffmpeg réel). | 0 (gate build)
 |===
 
-*Totaux* : 917 unit VERT (inchangé baseline S-117 — US-4 = tâche +
-wiring, zéro unit nouveau), 67 functional VERT (+3 net
-`GenerateCapsuleTranscriptFunctionalTest`), cucumber dédiés GREEN
-(baseline préservée — US-5 = cucumber à venir). `./gradlew check`
-BUILD SUCCESSFUL in 26m03s. Kover VERT, validatePlugins VERT. Zéro
+*PR #1 (lion92, 8 commits merge)* : +13 unit `RemotionPlannerTest` (917 → 930),
+fix build/i18n/capture/TTS, feat CAP-ANIM (Remotion).
+
+*Totaux* : 930 unit VERT (+13 PR + 7 PlaywrightTestGuard = 937 total test
+sources, 930 main + 7 guard), 67 functional VERT (1 skipped Playwright par
+défaut, 66 actifs), cucumber dédiés GREEN. `cucumberTestIntegration` skippé
+par défaut (gate Playwright). `check` non complété (integration long —
+gates clés VERTS). Zéro régression, zéro secret.
 régression, zéro secret, zéro bump BOM. Backward compat : transcript
 `enabled=false` défaut → tâche pas de skip forcé (skip économie d'encre
 uniquement si output existe ET non-blank).

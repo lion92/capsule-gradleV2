@@ -18,8 +18,12 @@ Session 121 — **Intégration PR #1 "Fix/build toolchain et pipeline" (lion92)*
   étendu pour vérifier ffmpeg (`isFfmpegAvailable()` probe `ffmpeg -version`)
 - Test functional + cucumber scénario #3 corrigés → "strictMode fails when
   ffmpeg is unavailable"
-- Gate : 930 unit 0 FAIL (+13 RemotionPlannerTest), 67 functional 0 FAIL,
-  cucumberTestCaptureStrategy 3/3, cucumberTestTranscript 4/4
+- **Gate Playwright** : `PlaywrightTestGuard` (pure domain CR-10) +
+  `PlaywrightTestAssumption` (JUnit5 assumeTrue) + `cucumberTestIntegration
+  onlyIf` — tests Playwright ignorés par défaut (trop longs 15-30 min),
+  override `-PrunPlaywrightTests`/`CI=true`. Tests NoOp restent actifs
+- Gate : 937 unit 0 FAIL (+7 PlaywrightTestGuard), 67 functional (1 skipped
+  Playwright), cucumber dédiés GREEN, `cucumberTestIntegration` skippé défaut
 
 == Mission Session 122
 
@@ -58,7 +62,8 @@ Reste P2 : CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
 == Rappels
 
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 930 unit VERT (S-121 baseline), 67 functional VERT, cucumber dédiés GREEN
+* 937 unit VERT (S-121 baseline), 67 functional VERT (1 Playwright skipped
+  défaut), cucumber dédiés GREEN, `cucumberTestIntegration` skippé défaut
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
 * Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
   préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
