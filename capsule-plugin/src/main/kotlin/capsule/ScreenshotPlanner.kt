@@ -20,6 +20,12 @@ import java.io.File
 object ScreenshotPlanner {
 
     /**
+     * Name of the concatenated deck video produced by the SCREENSHOT strategy.
+     * Consumers must select this file, never a per-slide `slide-N.webm`.
+     */
+    const val FINAL_WEBM_NAME: String = "capsule.webm"
+
+    /**
      * Builds a [ScreenshotCapturePlan] for the given slide durations.
      *
      * @param outputDir       the directory where PNGs, per-slide WebMs,
@@ -40,7 +46,7 @@ object ScreenshotPlanner {
         return ScreenshotCapturePlan(
             slides = entries,
             concatListFile = outputDir.resolve("concat-list.txt"),
-            finalWebm = outputDir.resolve("capsule.webm")
+            finalWebm = outputDir.resolve(FINAL_WEBM_NAME)
         )
     }
 

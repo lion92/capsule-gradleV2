@@ -38,12 +38,44 @@ class CapsulePlugin : Plugin<Project> {
             // Push resolved values into DSL Extension properties
             pushConfigIntoExtension(mergedConfig, capsuleExt)
 
-            // CR-8 — Structured config logging (4 section lines instead of 1 monolithic)
-            CapsuleConfigLogger.formatConfigLog(mergedConfig).forEach { line ->
+            // CR-8 — Structured config logging (4 section lines instead of 1 monolithic).
+            // Logged from the extension, not from mergedConfig: an explicit DSL value
+            // (`capsule { parallelCaptureEnabled.set(true) }`) never reaches the merged
+            // config, so logging the latter would announce a configuration the build
+            // does not actually run with.
+            CapsuleConfigLogger.formatConfigLog(effectiveConfig(mergedConfig, capsuleExt)).forEach { line ->
                 project.logger.lifecycle(line)
             }
         }
     }
+
+    /**
+     * Rebuilds the configuration actually in force after [pushConfigIntoExtension],
+     * i.e. the merged 4-source config with the explicit DSL values layered on top.
+     * Only the sections rendered by [CapsuleConfigLogger] are refreshed.
+     */
+    internal fun effectiveConfig(merged: CapsuleConfig, ext: CapsuleExtension): CapsuleConfig =
+        merged.copy(
+            tts = merged.tts.copy(
+                engine = ext.ttsEngine.get(),
+                voice = ext.ttsVoice.get(),
+                language = ext.ttsLanguage.get(),
+            ),
+            capture = merged.capture.copy(
+                viewportWidth = ext.viewportWidth.get(),
+                viewportHeight = ext.viewportHeight.get(),
+                parallelCaptureEnabled = ext.parallelCaptureEnabled.get(),
+                subtitleEnabled = ext.subtitleEnabled.get(),
+                subtitleFormat = ext.subtitleFormat.get(),
+                subtitleBurnIn = ext.subtitleBurnIn.get(),
+            ),
+            manim = merged.manim.copy(
+                executablePath = ext.manimExecutablePath.get(),
+                quality = ext.manimQuality.get(),
+                scriptsDir = ext.manimScriptsDir.get(),
+                outputDir = ext.manimOutputDir.get(),
+            ),
+        )
 
     /**
      * Collects CLI -P params that start with "capsule." and converts them

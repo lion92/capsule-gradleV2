@@ -475,10 +475,6 @@ object CapsuleConfigMerger {
         return env
     }
 
-    /** Helper: if this string is not blank, return it; otherwise return [fallback]. */
-    private fun String.ifNotBlankOrElse(fallback: String): String =
-        if (this.isNotBlank()) this else fallback
-
     private fun Map<String, Any?>.cliInt(key: String): Int? =
         this[key]?.let { (it as? Int) ?: it.toString().toIntOrNull() }
 

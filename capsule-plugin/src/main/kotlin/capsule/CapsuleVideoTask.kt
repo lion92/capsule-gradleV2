@@ -37,7 +37,7 @@ open class CapsuleVideoTask : DefaultTask() {
         /**
          * Default per-slide capture timeout (5 minutes). A capture that exceeds
          * this bound aborts the parallel run and shuts the executor down.
-         * Configurable via the [CapsuleExtension.parallelCaptureTimeout] DSL (CR-2.3).
+         * Configurable via the [CapsuleExtension.captureTimeoutMinutes] DSL (CR-2.3).
          */
         const val DEFAULT_CAPTURE_TIMEOUT_MILLIS: Long = 5 * 60 * 1000L
 
@@ -485,12 +485,17 @@ open class CapsuleVideoTask : DefaultTask() {
             deckCapture.close()
         }
 
-        val generatedVideo = videoOutputDir.listFiles { f -> f.name.endsWith(".webm") }
-            ?.firstOrNull()
+        // SCREENSHOT strategy leaves the per-slide `slide-N.webm` next to the
+        // concatenated `capsule.webm`, and listFiles() order is unspecified:
+        // always prefer the concatenated file, never a single slide.
+        val producedWebms = videoOutputDir.listFiles { f -> f.name.endsWith(".webm") }?.toList().orEmpty()
+        val generatedVideo = producedWebms.firstOrNull { it.name == ScreenshotPlanner.FINAL_WEBM_NAME }
+            ?: producedWebms.firstOrNull { !it.name.startsWith("slide-") }
+            ?: producedWebms.firstOrNull()
         if (generatedVideo != null) {
             val finalVideo = outDir.resolve("${parsed.deckName}.webm")
             generatedVideo.copyTo(finalVideo, overwrite = true)
-            mixAudioWithVideo(finalVideo, audioDir, parsed.segments, capsuleExtension.slideDurationSeconds.get())
+            mixAudioWithVideo(finalVideo, audioDir, parsed.segments)
             burnInSubtitlesIfEnabled(finalVideo, subtitleFile)
             applyAudioPostIfEnabled(finalVideo)
             val produced = convertFormatIfEnabled(finalVideo)
@@ -522,7 +527,7 @@ open class CapsuleVideoTask : DefaultTask() {
         if (concatVideo.exists()) {
             val finalVideo = outDir.resolve("${parsed.deckName}.webm")
             concatVideo.copyTo(finalVideo, overwrite = true)
-            mixAudioWithVideo(finalVideo, audioDir, parsed.segments, capsuleExtension.slideDurationSeconds.get())
+            mixAudioWithVideo(finalVideo, audioDir, parsed.segments)
             burnInSubtitlesIfEnabled(finalVideo, subtitleFile)
             applyAudioPostIfEnabled(finalVideo)
             val produced = convertFormatIfEnabled(finalVideo)
@@ -653,9 +658,11 @@ open class CapsuleVideoTask : DefaultTask() {
         val src = HtmlEscape.escape(subtitleFile.name)
         val label = HtmlEscape.escape(format.name)
         val trackElement = """<track kind="captions" src="$src" srclang="$lang" label="$label captions" default>"""
+        // The autoplay audio script is already injected by injectAudio — re-adding it
+        // here would build a second set of Audio elements and play the narration twice.
         return deckHtml.replace(
             "</body>",
-            "$trackElement\n$AUDIO_INJECT_SCRIPT</body>"
+            "$trackElement\n</body>"
         )
     }
 
@@ -803,8 +810,14 @@ open class CapsuleVideoTask : DefaultTask() {
                     singleSlideFile.writeText(singleSlideHtml)
 
                     capture.capture(singleSlideFile.absolutePath, slideDir, viewportWidth, viewportHeight, listOf(slideDurations[idx]))
-                    val source = slideDir.resolve("slide.webm")
-                    if (source.exists()) {
+                    // No capture engine writes a file called `slide.webm`: Playwright
+                    // names its recording with a random id, ScreenshotCaptureImpl emits
+                    // `capsule.webm`. Take whatever WebM landed in the slide directory.
+                    val produced = slideDir.listFiles { f -> f.name.endsWith(".webm") }?.toList().orEmpty()
+                    val source = produced.firstOrNull { it.name == ScreenshotPlanner.FINAL_WEBM_NAME }
+                        ?: produced.firstOrNull { !it.name.startsWith("slide-") }
+                        ?: produced.firstOrNull()
+                    if (source != null && source.exists()) {
                         val target = outputDir.resolve("slide-${String.format("%02d", seg.index)}.webm")
                         source.copyTo(target, overwrite = true)
                         target
@@ -845,7 +858,7 @@ open class CapsuleVideoTask : DefaultTask() {
 
         if (webmFiles.isNotEmpty()) {
             val finalVideo = outputDir.resolve("${parsed.deckName}.webm")
-            concatWebmFiles(webmFiles, finalVideo)
+            concatWebmFiles(webmFiles, finalVideo, capsuleExtension.ffmpegExecutablePath.get())
         }
 
         return failedSlides.size
@@ -948,7 +961,7 @@ open class CapsuleVideoTask : DefaultTask() {
         return outFile
     }
 
-    private fun mixAudioWithVideo(videoFile: File, audioDir: File, slides: List<SlideSegment>, slideDurationSeconds: Double) {
+    private fun mixAudioWithVideo(videoFile: File, audioDir: File, slides: List<SlideSegment>) {
         val mp3Files = slides.mapNotNull { seg ->
             val idx = String.format("%02d", seg.index)
             val f = audioDir.resolve("slide-$idx.mp3")
@@ -956,7 +969,7 @@ open class CapsuleVideoTask : DefaultTask() {
         }
         if (mp3Files.isEmpty()) return
 
-        val cmd = mutableListOf("ffmpeg", "-y", "-i", videoFile.absolutePath)
+        val cmd = mutableListOf(capsuleExtension.ffmpegExecutablePath.get(), "-y", "-i", videoFile.absolutePath)
         val concatInputs = mutableListOf<String>()
 
         for ((i, mp3) in mp3Files.withIndex()) {

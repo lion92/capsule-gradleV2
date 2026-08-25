@@ -39,7 +39,7 @@ object StrictModeGuard {
         val pathSegment = if (path.isNotBlank()) " at '$path'" else ""
         throw IllegalStateException(
             "strictMode is enabled: $engineName is not available$pathSegment. " +
-                "Disable strictMode (capsule.strictMode=false) or install $engineName."
+                "Disable strictMode (capsule.strictMode.enabled=false) or install $engineName."
         )
     }
 }
