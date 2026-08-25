@@ -207,5 +207,13 @@ class CapsulePlugin : Plugin<Project> {
         if (!ext.transcriptStrategy.isPresent || ext.transcriptStrategy.get() == conventions.transcriptStrategy) {
             ext.transcriptStrategy.set(config.transcript.strategy)
         }
+
+        // Podcast section (CAP-PODCAST)
+        if (!ext.podcastEnabled.isPresent || ext.podcastEnabled.get() == conventions.podcastEnabled) {
+            ext.podcastEnabled.set(config.podcast.enabled)
+        }
+        if (!ext.podcastOutputFile.isPresent || ext.podcastOutputFile.get() == conventions.podcastOutputFile) {
+            ext.podcastOutputFile.set(config.podcast.outputFile)
+        }
     }
 }

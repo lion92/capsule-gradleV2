@@ -1,6 +1,7 @@
 package capsule
 
 import capsule.audio.AudioPostConfig
+import capsule.podcast.PodcastConfig
 import capsule.transcript.TranscriptConfig
 import capsule.transcript.TranscriptStrategy
 import java.io.File
@@ -42,7 +43,8 @@ object CapsuleConfigMerger {
             validation = mergeValidationConfig(envConfig.validation, propertiesConfig.validation, yaml?.validation, cliParams),
             audioPost = mergeAudioPostConfig(envConfig.audioPost, propertiesConfig.audioPost, yaml?.audioPost, cliParams),
             transcript = mergeTranscriptConfig(envConfig.transcript, propertiesConfig.transcript, yaml?.transcript, cliParams),
-            remotion = mergeRemotionConfig(envConfig.remotion, propertiesConfig.remotion, yaml?.remotion, cliParams)
+            remotion = mergeRemotionConfig(envConfig.remotion, propertiesConfig.remotion, yaml?.remotion, cliParams),
+            podcast = mergePodcastConfig(envConfig.podcast, propertiesConfig.podcast, yaml?.podcast, cliParams)
         )
     }
 
@@ -159,6 +161,10 @@ object CapsuleConfigMerger {
                 nodeExecutablePath = env["CAPSULE_REMOTION_NODE_EXECUTABLE_PATH"] ?: "node",
                 concurrency = env["CAPSULE_REMOTION_CONCURRENCY"]?.toIntOrNull() ?: 4,
                 fps = env["CAPSULE_REMOTION_FPS"]?.toIntOrNull() ?: 30
+            ),
+            podcast = PodcastConfig(
+                enabled = env["CAPSULE_PODCAST_ENABLED"]?.toBoolean() ?: false,
+                outputFile = env["CAPSULE_PODCAST_OUTPUT_FILE"] ?: ""
             )
         )
     }
@@ -244,6 +250,10 @@ object CapsuleConfigMerger {
                 nodeExecutablePath = props["capsule.remotion.nodeExecutablePath"] ?: "node",
                 concurrency = props["capsule.remotion.concurrency"]?.toIntOrNull() ?: 4,
                 fps = props["capsule.remotion.fps"]?.toIntOrNull() ?: 30
+            ),
+            podcast = PodcastConfig(
+                enabled = props["capsule.podcast.enabled"]?.toBoolean() ?: false,
+                outputFile = props["capsule.podcast.outputFile"] ?: ""
             )
         )
     }
@@ -370,6 +380,13 @@ object CapsuleConfigMerger {
             docsGlobs = mergeStrList(cli, "context.docsGlobs", yaml?.docsGlobs, props.docsGlobs, env.docsGlobs),
             scenarioFile = mergeStr(cli, "context.scenarioFile", yaml?.scenarioFile, props.scenarioFile ?: "", env.scenarioFile ?: "").takeIf { it.isNotBlank() },
             glossaryFile = mergeStr(cli, "context.glossaryFile", yaml?.glossaryFile, props.glossaryFile ?: "", env.glossaryFile ?: "").takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun mergePodcastConfig(env: PodcastConfig, props: PodcastConfig, yaml: PodcastConfig?, cli: Map<String, Any?>): PodcastConfig {
+        return PodcastConfig(
+            enabled = mergeBoolean(cli, "podcast.enabled", yaml?.enabled, props.enabled),
+            outputFile = mergeStr(cli, "podcast.outputFile", yaml?.outputFile, props.outputFile, env.outputFile)
         )
     }
 

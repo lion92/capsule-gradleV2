@@ -1311,3 +1311,26 @@ task+wiring+cucumber TODO S-127). Baseline 986 unit VERT préservée.
 Pattern S-057/S-063.
 
 Rapport : `.agents/sessions/125-cap-podcast-cadrage.adoc`.
+
+---
+
+== Session 126 (2026-08-25) — CAP-PODCAST US-1 Config + Concatenator + Factory
+
+EPIC : CAP-PODCAST — Extraction audio-only (mode podcast)
+Statut : 🟡 EN COURS 2/3 US (US-0 ✅, US-1 ✅, US-2 TODO)
+
+Domaine `capsule.podcast` (13ème) créé : `PodcastConfig` (2 champs defaults
+backward compat) + `PodcastConcatenator` interface (`concatenate`/
+`isAvailable`/`name`) + `PodcastConcatCommand` object pur
+(`buildConcatListContent` one `file '...'` per line + `buildConcatArgv`
+FFmpeg concat demuxer) + `PodcastConcatenatorImpl` (FFmpeg, temp list file,
+stream copy, deletes list in finally) + `NoOpPodcastConcatenator` (returns
+false degraded). `CapsuleConfig` 13ème section. `mergePodcastConfig` 4
+sources. `CapsuleExtension` +2 properties. `pushConfigIntoExtension`
+podcast block. `CapsuleManager.resolvePodcastConcatenator` 8ème factory.
+
+Baby-step TDD strict RED → GREEN → REFACTOR. 1014 unit VERT 0 FAIL
+(+28 net baseline 986). Zéro régression, zéro secret, zéro bump BOM.
+4 fichiers prod créés + 5 modifiés + 2 test créés + 1 modifié.
+
+Rapport : `.agents/sessions/126-cap-podcast-us1-config-concatenator.adoc`.

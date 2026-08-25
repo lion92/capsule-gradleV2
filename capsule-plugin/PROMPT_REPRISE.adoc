@@ -1,57 +1,60 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
-:session: 126
+:session: 127
 :borough: Détroit
-:session_precedente: 125 — CAP-PODCAST US-0 cadrage (gouvernance pure)
+:session_precedente: 126 — CAP-PODCAST US-1 config+concatenator+factory
 
 == Contexte Hérité
 
-Session 125 — **CAP-PODCAST US-0 Cadrage** :
-- Audit 15 constats + 12 décisions architecturales (gouvernance pure, zéro code)
-- Domaine `capsule.podcast` 13ème, `PodcastConfig` 13ème section `CapsuleConfig`
-- `PodcastConcatenator` object pur FFmpeg concat demuxer + Impl + NoOp + factory 8ème
-- Tâche `generateCapsulePodcast` dependsOn `generateCapsuleVideo` (MP3 slides via
-  `synthesizeTtsForScript` dans `CapsuleVideoTask`)
-- Économie d'encre skip si `podcastOutput` existe + `probeDuration > 0.0`
-- `CapsuleMessages` 25ème key, runner dédié 17ème + steps préfixés "podcast" (S-088)
-- 3 US ~4 pts (US-0 ✅, US-1/2 TODO). Baseline 986 unit VERT préservée
-- Rapport : `.agents/sessions/125-cap-podcast-cadrage.adoc`
-- Backlog section CAP-PODCAST refondue (décisions + table US détaillées)
+Session 126 — **CAP-PODCAST US-1 TERMINÉ** :
+- Domaine `capsule.podcast` (13ème) créé : `PodcastConfig` (2 champs
+  `enabled=false` + `outputFile=""` defaults backward compat) +
+  `PodcastConcatenator` interface + `PodcastConcatCommand` object pur
+  + `PodcastConcatenatorImpl` (FFmpeg concat demuxer) +
+  `NoOpPodcastConcatenator` (returns false degraded)
+- `CapsuleConfig` 13ème section `podcast` + `mergePodcastConfig` 4 sources
+  + `CapsuleExtension` 2 properties + `pushConfigIntoExtension` podcast block
+- `CapsuleManager.resolvePodcastConcatenator` 8ème factory (pattern
+  `resolveAudioPostProcessor` — noop→NoOp, unavailable+strict→throw)
+- Baby-step TDD strict RED → GREEN → REFACTOR. 1014 unit VERT 0 FAIL
+  (+28 net baseline 986), 69 functional VERT, cucumber dédiés GREEN
+- Rapport : `.agents/sessions/126-cap-podcast-us1-config-concatenator.adoc`
+- EPIC CAP-PODCAST 2/3 US (reste US-2)
 
-== Mission Session 126
+== Mission Session 127
 
-=== CAP-PODCAST US-1 — Config + Concatenator + Factory
+=== CAP-PODCAST US-2 — Tâche + Wiring + Cucumber BDD
 
-. `PodcastConfig.kt` (nouveau, `src/main/kotlin/capsule/podcast/`) — data class
-  2 champs `enabled: Boolean = false` + `outputFile: String = ""` (defaults
-  backward compat, pattern `TranscriptConfig`)
-. `PodcastConcatenator.kt` (object pur) — `buildConcatArgv(mp3Files: List<File>,
-  outputFile: File, ffmpegPath: String): List<String>` (FFmpeg concat demuxer
-  `-f concat -safe 0 -i <listfile> -c copy <output>`) + `buildConcatListContent
-  (mp3Files): String` (fichier liste `file '/abs/path'\n` par slide). Zéro I/O.
-. `PodcastConcatenator` interface + `PodcastConcatenatorImpl(ffmpegPath)` +
-  `NoOpPodcastConcatenator` (pattern `AudioPostProcessor`/`NoOpAudioPostProcessor`)
-. `CapsuleConfig` 13ème section `podcast: PodcastConfig = PodcastConfig()`
-. `CapsuleConfigMerger.mergePodcastConfig` (`mergeBoolean` enabled + `mergeStr`
-  outputFile) + `loadFromEnvironment` (`CAPSULE_PODCAST_ENABLED` +
-  `CAPSULE_PODCAST_OUTPUT_FILE`) + `buildConfigFromProperties`
-  (`capsule.podcast.enabled` + `capsule.podcast.outputFile`)
-. `CapsuleExtension` 2 properties (`podcastEnabled` convention `false` +
-  `podcastOutputFile` convention `""`) + `CapsuleConventions` 2 champs +
-  `pushConfigIntoExtension` 2 guards (pattern transcript L203-209)
-. `CapsuleManager.resolvePodcastConcatenator(ffmpegPath, strict)` 8ème factory
-  (pattern `resolveAudioPostProcessor` L480-489 — noop→NoOp, unavailable+
-  non-strict→NoOp, unavailable+strict→throw, available→Impl)
+. `GenerateCapsulePodcastTask.kt` (nouveau, `capsule/podcast/`) — tâche
+  Gradle `@DisableCachingByDefault` : groupe `generate`,
+  `@InputFiles @PathSensitive(RELATIVE) audioFiles: ConfigurableFileCollection`,
+  `@Input deckName: Property<String>`,
+  `@OutputFile podcastOutput: RegularFileProperty`,
+  `@Input podcastEnabled: Property<Boolean>`. TaskAction : skip si
+  `!enabled` → log "skipped" ; skip si `podcastOutput` existe ET
+  `MediaProbeUtil.probeDuration > 0.0` (économie d'encre) ; skip si
+  `audioFiles` vide → warn ; factory `resolvePodcastConcatenator` +
+  `concatenate`.
+. `dependsOn("generateCapsuleVideo")` (les MP3 slides sont produits par
+  `synthesizeTtsForScript` dans `CapsuleVideoTask`).
+. `CapsuleManager.registerGeneratePodcastTask` (16ème, pattern
+  `registerGenerateTranscriptTask` L327-368) — `audioFiles` résolus depuis
+  `build/capsule/<deckName>/slide-*.mp3` (provider lazy), `podcastOutput`
+  convention `build/capsule/<deckName>-podcast.mp3`.
+. `CapsuleMessages` 25ème key `task.generateCapsulePodcast.description`
+  (11 `Messages*.properties`).
+. Cucumber `capsule_podcast.feature` `@podcast` (3 scénarios : default
+  disabled → skipped no-op, enabled + slide MP3s → MP3 produit + log
+  lifecycle, enabled + NoOp ffmpeg → degraded no MP3). Runner dédié
+  `CapsulePodcastCucumberRunner` (pattern S-082) + steps
+  `CapsulePodcastSteps` préfixés "podcast" (bug S-088 glue
+  `capsule.scenarios` partagée) + `CucumberTaskSpec("cucumberTestPodcast")`
+  17ème câblé `build.gradle.kts`.
+. `CapsuleMessagesTest` + `MessagesFrTranslationTest` étendus (25ème key
+  ajoutée aux `@ValueSource`).
 
-Baby-step TDD strict RED → GREEN → REFACTOR. ~10 unit :
-PodcastConcatenator.buildConcatArgv (order, paths, ffmpegPath injected),
-buildConcatListContent (format, empty, escaped), PodcastConfig defaults,
-merger (defaults/YAML/props/ENV/CLI/blank), NoOp returns false, Impl isAvailable,
-factory (noop/unavailable/strict/available).
-
-=== Reste EPIC (après US-1)
-
-* US-2 tâche `generateCapsulePodcast` + wiring + Cucumber BDD (3 scénarios
-  `@podcast`) + `CapsuleMessages` 25ème key + runner dédié 17ème. ~3 pts.
+Baby-step TDD/BDD : ~3 unit (PodcastConcatenatorTest) + 1 functional
+(GeneratePodcastFunctionalTest : disabled skip, enabled NoOp → no MP3 +
+warn) + 3 cucumber scénarios GREEN.
 
 === Reste P2 (après CAP-PODCAST)
 
@@ -61,7 +64,7 @@ factory (noop/unavailable/strict/available).
 
 == Points d'attention
 
-* 986 unit VERT (S-124 baseline), 69 functional VERT, cucumber dédiés GREEN
+* 1014 unit VERT (S-126 baseline), 69 functional VERT, cucumber dédiés GREEN
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
 * Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
   préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
@@ -71,22 +74,23 @@ factory (noop/unavailable/strict/available).
   `cucumberTestPodcast` à câbler US-2)
 * Conventions 0.0.3 (mavenLocal), BOM 0.0.27, codebase 0.0.10, slider 0.0.18
 * CaptureStrategy 3 valeurs : PLAYWRIGHT (default), SCREENSHOT, REMOTION
-* 12 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
-  i18n, ci, transcript, remotion + support. `capsule.podcast` = 13ème (US-1)
+* 13 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
+  i18n, ci, transcript, remotion, podcast + support. `capsule.podcast` = 13ème (S-126)
 * MP3 slides localisation : `build/capsule/<deckName>/slide-XX.mp3` (zero-padded
   2 digits, produits par `synthesizeTtsForScript` L390)
+* `PodcastConcatCommand` = object pur (pattern `AudioPostCommand`), ne pas
+  confondre avec `PodcastConcatenator` interface
 
 == Rappels
 
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 986 unit VERT (S-124 baseline), 69 functional VERT, cucumber dédiés GREEN
+* 1014 unit VERT (S-126 baseline), 69 functional VERT, cucumber dédiés GREEN
 * `cucumberTest` skippé par défaut (CR-10), `cucumberTestIntegration` skippé
   par défaut (Playwright gate S-121)
 * DSL 4 sources pattern : ENV < props < YAML < CLI
 * Pattern object pur pour commande ffmpeg : `AudioPostCommand`,
-  `SubtitleBurnInCommand`, `FormatConversion`
+  `SubtitleBurnInCommand`, `FormatConversion`, `PodcastConcatCommand`
 * `compileOnly(libs.slider)` conservé (runtime). `testImplementation(libs.slider)`
   RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder)
 * Catalogue : `slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27
-* CAP-PODCAST US-1 = config + concatenator + factory (pas de tâche Gradle, pas
-  de cucumber — US-2 livrera tâche + wiring + cucumber)
+* CAP-PODCAST US-2 = tâche + wiring + cucumber (US-1 config+factory déjà livré)

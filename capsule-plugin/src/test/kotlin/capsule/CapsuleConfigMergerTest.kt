@@ -1,6 +1,7 @@
 package capsule
 
 import capsule.audio.AudioPostConfig
+import capsule.podcast.PodcastConfig
 import capsule.transcript.TranscriptConfig
 import capsule.transcript.TranscriptStrategy
 import org.gradle.testfixtures.ProjectBuilder
@@ -1580,5 +1581,131 @@ class CapsuleConfigMergerTest {
         val config = CapsuleConfigMerger.loadFromGradleProperties(projectDir)
         assertEquals(true, config.transcript.enabled, "loadFromGradleProperties should read transcript.enabled")
         assertEquals(TranscriptStrategy.LLM, config.transcript.strategy, "loadFromGradleProperties should read transcript.strategy")
+    }
+
+    // ─── PodcastConfig (CAP-PODCAST US-1) ────────────────────────
+    //
+    // 2 fields: enabled (Bool=false), outputFile (Str="").
+    // All defaults disabled/empty to preserve backward compat — existing
+    // configs without a `podcast` section keep the no-podcast behavior.
+
+    @Test
+    fun `default merge has podcast disabled with empty output file`() {
+        val projectDir = File(tempDir, "podcast-default").also { it.mkdirs() }
+        val merged = CapsuleConfigMerger.merge(projectDir, CapsuleConfig(), emptyMap())
+        assertEquals(false, merged.podcast.enabled, "podcast.enabled should default to false")
+        assertEquals("", merged.podcast.outputFile, "podcast.outputFile should default to empty")
+    }
+
+    @Test
+    fun `podcast is read from YAML`() {
+        val projectDir = File(tempDir, "podcast-yaml").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            podcast = PodcastConfig(enabled = true, outputFile = "/out/capsule.mp3")
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals(true, merged.podcast.enabled, "YAML podcast.enabled should be honored")
+        assertEquals("/out/capsule.mp3", merged.podcast.outputFile, "YAML podcast.outputFile should be honored")
+    }
+
+    @Test
+    fun `podcast CLI overrides YAML`() {
+        val projectDir = File(tempDir, "podcast-cli-over-yaml").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            podcast = PodcastConfig(enabled = true, outputFile = "/yaml/podcast.mp3")
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, yamlConfig, mapOf(
+                "podcast.enabled" to "false",
+                "podcast.outputFile" to "/cli/podcast.mp3"
+            )
+        )
+        assertEquals(false, merged.podcast.enabled, "CLI false should override YAML true")
+        assertEquals("/cli/podcast.mp3", merged.podcast.outputFile, "CLI outputFile should override YAML")
+    }
+
+    @Test
+    fun `podcast is read from gradle properties`() {
+        val projectDir = File(tempDir, "podcast-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.podcast.enabled=true
+            capsule.podcast.outputFile=/props/podcast.mp3
+            """.trimIndent()
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, CapsuleConfig(), emptyMap(), yamlLoaded = false)
+        assertEquals(true, merged.podcast.enabled, "props podcast.enabled should be honored")
+        assertEquals("/props/podcast.mp3", merged.podcast.outputFile, "props podcast.outputFile should be honored")
+    }
+
+    @Test
+    fun `podcast YAML overrides gradle properties`() {
+        val projectDir = File(tempDir, "podcast-yaml-over-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.podcast.enabled=false
+            capsule.podcast.outputFile=/props/podcast.mp3
+            """.trimIndent()
+        )
+        val yamlConfig = CapsuleConfig(
+            podcast = PodcastConfig(enabled = true, outputFile = "/yaml/podcast.mp3")
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals(true, merged.podcast.enabled, "YAML should override props")
+        assertEquals("/yaml/podcast.mp3", merged.podcast.outputFile, "YAML should override props")
+    }
+
+    @Test
+    fun `podcast CLI overrides gradle properties when no YAML`() {
+        val projectDir = File(tempDir, "podcast-cli-over-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.podcast.enabled=false
+            capsule.podcast.outputFile=/props/podcast.mp3
+            """.trimIndent()
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, CapsuleConfig(), mapOf(
+                "podcast.enabled" to "true",
+                "podcast.outputFile" to "/cli/podcast.mp3"
+            ),
+            yamlLoaded = false
+        )
+        assertEquals(true, merged.podcast.enabled, "CLI should override props when no YAML")
+        assertEquals("/cli/podcast.mp3", merged.podcast.outputFile, "CLI should override props when no YAML")
+    }
+
+    @Test
+    fun `podcast partial CLI override preserves non-overridden YAML fields`() {
+        val projectDir = File(tempDir, "podcast-partial-cli").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            podcast = PodcastConfig(enabled = true, outputFile = "/yaml/podcast.mp3")
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, yamlConfig, mapOf("podcast.enabled" to "false")
+        )
+        assertEquals(false, merged.podcast.enabled, "CLI overrides enabled only")
+        assertEquals("/yaml/podcast.mp3", merged.podcast.outputFile, "YAML outputFile preserved when CLI absent")
+    }
+
+    @Test
+    fun `loadFromEnvironment default podcast is disabled with empty output file`() {
+        val config = CapsuleConfigMerger.loadFromEnvironment()
+        assertEquals(false, config.podcast.enabled, "env default podcast.enabled should be false")
+        assertEquals("", config.podcast.outputFile, "env default podcast.outputFile should be empty")
+    }
+
+    @Test
+    fun `loadFromGradleProperties reads capsule podcast section`() {
+        val projectDir = File(tempDir, "podcast-props-load").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.podcast.enabled=true
+            capsule.podcast.outputFile=/props/podcast.mp3
+            """.trimIndent()
+        )
+        val config = CapsuleConfigMerger.loadFromGradleProperties(projectDir)
+        assertEquals(true, config.podcast.enabled, "loadFromGradleProperties should read podcast.enabled")
+        assertEquals("/props/podcast.mp3", config.podcast.outputFile, "loadFromGradleProperties should read podcast.outputFile")
     }
 }

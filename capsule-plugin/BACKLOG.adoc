@@ -1,6 +1,6 @@
 = BACKLOG — capsule-gradle (Détroit)
 :toc:
-:last_update: 2026-08-25 (Session 125 — **CAP-PODCAST US-0 Cadrage** — audit 15 constats + 12 décisions architecturales, domaine `capsule.podcast` 13ème, `PodcastConfig` 13ème section, `PodcastConcatenator` object pur FFmpeg concat demuxer + Impl + NoOp + factory 8ème, tâche `generateCapsulePodcast` dependsOn `generateCapsuleVideo`, économie d'encre probeDuration > 0, runner dédié 17ème. Zéro code — gouvernance pure. Baseline 986 unit VERT préservée.)
+:last_update: 2026-08-25 (Session 126 — **CAP-PODCAST US-1 TERMINÉ** — `PodcastConfig` + `PodcastConcatCommand` object pur + `PodcastConcatenator` interface + `PodcastConcatenatorImpl` FFmpeg concat demuxer + `NoOpPodcastConcatenator` + `CapsuleConfig` 13ème section + `mergePodcastConfig` 4 sources + `CapsuleExtension` 2 properties + `pushConfigIntoExtension` podcast block + `resolvePodcastConcatenator` factory 8ème. Baby-step TDD strict RED → GREEN → REFACTOR. 1014 unit VERT 0 FAIL (+28 net baseline 986). Domaine `capsule.podcast` 13ème créé (4 fichiers prod). Zéro régression, zéro secret, zéro bump BOM.)
 
 '''
 == 📦 Publication Maven Central ✅
@@ -2770,8 +2770,8 @@ factory 8ème, tâche `generateCapsulePodcast` dependsOn `generateCapsuleVideo`
   buildConcatListContent format/empty/escaped, PodcastConfig defaults,
   merger defaults/YAML/props/ENV/CLI/blank, NoOp returns false, Impl isAvailable,
   factory noop/unavailable/strict/available).
-| 2
-| ⬜ TODO (S-126)
+  | 2
+  | ✅ TERMINÉ (S-126)
 
 | CAP-PODCAST-2
 | *Tâche `generateCapsulePodcast` + wiring `CapsuleManager` + `CapsuleMessages`
@@ -3174,7 +3174,7 @@ _Total_ : 3 US, ~4 pts.
 | 3
 | 4
 | 🟡 P2
-| 🟡 EN COURS (US-0 ✅ S-125)
+| 🟡 EN COURS (US-0 ✅ S-125, US-1 ✅ S-126)
 
 | Post-prod
 | CAP-PREVIEW

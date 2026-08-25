@@ -488,6 +488,28 @@ class CapsuleManager(private val project: Project) {
             }
         }
 
+        /**
+         * Resolves the appropriate [capsule.podcast.PodcastConcatenator]
+         * based on ffmpeg availability (CAP-PODCAST US-1). 8ème factory
+         * `resolve*`, pattern mirrors [resolveAudioPostProcessor]:
+         * - If ffmpegPath is "noop", returns [capsule.podcast.NoOpPodcastConcatenator]
+         * - Otherwise, returns [capsule.podcast.PodcastConcatenatorImpl] if ffmpeg is available
+         * - If unavailable and strict, [StrictModeGuard] throws
+         * - If unavailable and non-strict, returns [capsule.podcast.NoOpPodcastConcatenator]
+         *   (degraded mode — no podcast produced, backward compat)
+         */
+        @JvmStatic
+        fun resolvePodcastConcatenator(ffmpegPath: String = "ffmpeg", strict: Boolean = false): capsule.podcast.PodcastConcatenator {
+            if (ffmpegPath == "noop") return capsule.podcast.NoOpPodcastConcatenator()
+            val concat = capsule.podcast.PodcastConcatenatorImpl(ffmpegPath)
+            return if (concat.isAvailable()) {
+                concat
+            } else {
+                StrictModeGuard.requireAvailable(strict, "ffmpeg (podcast concat)", false, ffmpegPath)
+                capsule.podcast.NoOpPodcastConcatenator()
+            }
+        }
+
         fun readScriptFiles(dir: File): List<File> {
             return dir.listFiles { f ->
                 f.name.endsWith("-script.txt") &&

@@ -212,6 +212,14 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
         transcriptStrategy.set(TranscriptStrategy.fromString(value))
     }
 
+    /** CAP-PODCAST — `true` to concatenate per-slide MP3s into a podcast MP3. Defaults to false (opt-in). */
+    val podcastEnabled: Property<Boolean> = objects.property(Boolean::class.java)
+        .convention(false)
+
+    /** CAP-PODCAST — output path for the podcast MP3. Defaults to empty (task resolves a default under build/capsule/). */
+    val podcastOutputFile: Property<String> = objects.property(String::class.java)
+        .convention("")
+
     internal val conventions: CapsuleConventions = CapsuleConventions(
         outputDir = "capsule",
         sliderScriptDir = "capsule",
@@ -261,7 +269,9 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
         remotionProjectDir = "capsule/remotion",
         remotionNodeExecutablePath = "node",
         remotionConcurrency = 4,
-        remotionFps = 30
+        remotionFps = 30,
+        podcastEnabled = false,
+        podcastOutputFile = ""
     )
 }
 
@@ -314,5 +324,7 @@ data class CapsuleConventions(
     val remotionProjectDir: String,
     val remotionNodeExecutablePath: String,
     val remotionConcurrency: Int,
-    val remotionFps: Int
+    val remotionFps: Int,
+    val podcastEnabled: Boolean,
+    val podcastOutputFile: String
 )

@@ -1,0 +1,118 @@
+= Session 126 — CAP-PODCAST US-1 Config + Concatenator + Factory
+:session: 126
+:borough: Détroit
+:epic: CAP-PODCAST
+:date: 2026-08-25
+:method: baby-step TDD strict RED → GREEN → REFACTOR
+
+== Mission
+
+CAP-PODCAST US-1 — `PodcastConfig` + `PodcastConcatenator` object pur +
+`PodcastConcatenatorImpl`/`NoOpPodcastConcatenator` + `mergePodcastConfig`
+4 sources + `CapsuleExtension` 2 properties + `resolvePodcastConcatenator`
+factory 8ème. Baby-step TDD ~10 unit.
+
+== Réalisation
+
+=== RED — Tests écrits en premier
+
+. `PodcastConfigTest.kt` (nouveau) — 3 unit : defaults disabled/empty,
+  config holds fields, data class equals by content.
+. `PodcastConcatenatorTest.kt` (nouveau) — 20 unit :
+  `PodcastConcatCommand.buildConcatListContent` (format/empty/single),
+  `PodcastConcatCommand.buildConcatArgv` (concat demuxer/safe 0/copy,
+  ffmpegPath injected, output last), `PodcastConcatenatorImpl`
+  (unavailable/name/concatenate false when ffmpeg unavailable/empty),
+  `NoOpPodcastConcatenator` (available/name/concatenate false),
+  `resolvePodcastConcatenator` factory (noop/unavailable non-strict/
+  strict throws/available).
+. `CapsuleConfigMergerTest.kt` étendu — 10 unit podcast : default
+  disabled/empty, YAML honored, CLI overrides YAML, gradle properties
+  honored, YAML overrides props, CLI overrides props (no YAML),
+  partial CLI override preserves YAML, env defaults, props load.
+. Compilation RED : `Unresolved reference 'PodcastConfig'`,
+  `'PodcastConcatenatorImpl'`, `'NoOpPodcastConcatenator'`,
+  `'resolvePodcastConcatenator'` (attendu — classes inexistantes).
+
+=== GREEN — Code de production
+
+4 fichiers prod créés (domaine `capsule.podcast`, 13ème) :
+
+. `src/main/kotlin/capsule/podcast/PodcastConfig.kt` — data class
+  2 champs `enabled: Boolean = false` + `outputFile: String = ""`
+  (defaults backward compat, pattern `TranscriptConfig`).
+. `src/main/kotlin/capsule/podcast/PodcastConcatenator.kt` —
+  `interface PodcastConcatenator` (`concatenate(mp3Files, outputFile):
+  Boolean` + `isAvailable()` + `name()`, pattern `AudioPostProcessor`/
+  `VideoFormatConverter`) + `object PodcastConcatCommand` (pure, no I/O)
+  `buildConcatListContent(mp3Files): String` (one `file '<absolute>'`
+  directive per line, trailing newline, empty list → empty string) +
+  `buildConcatArgv(listFile, outputFile, ffmpegPath): List<String>`
+  (`ffmpeg -y -f concat -safe 0 -i <listfile> -c copy <output>`).
+. `src/main/kotlin/capsule/podcast/PodcastConcatenatorImpl.kt` —
+  `PodcastConcatenatorImpl(ffmpegPath)` (FFmpeg concat demuxer, writes
+  temp list file next to output, stream copy, deletes list file in
+  `finally`, returns false when ffmpeg unavailable/empty list/exit
+  non-zero, pattern `AudioPostProcessorImpl`) +
+  `NoOpPodcastConcatenator` (`isAvailable() = true`,
+  `concatenate() = false`, degraded mode backward compat).
+
+5 fichiers prod modifiés (câblage) :
+
+. `CapsuleConfig.kt` — 13ème section `podcast: PodcastConfig =
+  PodcastConfig()` + import.
+. `CapsuleConfigMerger.kt` — `mergePodcastConfig` (pattern
+  `mergeTranscriptConfig` — `mergeBoolean` enabled + `mergeStr`
+  outputFile) + `loadFromEnvironment` (`CAPSULE_PODCAST_ENABLED` +
+  `CAPSULE_PODCAST_OUTPUT_FILE`) + `buildConfigFromProperties`
+  (`capsule.podcast.enabled` + `capsule.podcast.outputFile`) + `merge()`
+  étendu `podcast = mergePodcastConfig(...)` + import.
+. `CapsuleModels.kt` — `CapsuleExtension` +2 properties
+  (`podcastEnabled` convention `false` + `podcastOutputFile` convention
+  `""`) + `CapsuleConventions` +2 champs + instance `conventions`
+  initialisée.
+. `CapsulePlugin.kt` — `pushConfigIntoExtension` podcast block
+  (2 guards `isPresent || == conventions`, pattern transcript block).
+. `CapsuleManager.kt` — `resolvePodcastConcatenator(ffmpegPath, strict)`
+  8ème factory `resolve*` (pattern `resolveAudioPostProcessor` —
+  noop → NoOp, unavailable + non-strict → NoOp, unavailable + strict
+  → throw via `StrictModeGuard`, available → Impl).
+
+=== REFACTOR — Vérification
+
+. `buildConcatListContent` empty list : `joinToString(postfix="\n")`
+  produit `"\n"` au lieu de `""` → guard `if (mp3Files.isEmpty()) ""`
+  ajouté (1 test RED corrigé en GREEN).
+. Conflit de nom `object PodcastConcatenator` vs
+  `interface PodcastConcatenator` → object renommé
+  `PodcastConcatCommand` (pattern `AudioPostCommand`/
+  `SubtitleBurnInCommand`).
+. `check` BUILD SUCCESSFUL in 17m50s — 1014 unit VERT 0 FAIL
+  (+28 net baseline 986 → 1014), 69 functional VERT (baseline
+  préservée), cucumber dédiés GREEN (baseline préservée), Kover VERT,
+  validatePlugins VERT. Zéro régression, zéro secret, zéro bump BOM.
+
+== Fichiers
+
+. *Prod créés* (4) : `capsule/podcast/PodcastConfig.kt`,
+  `capsule/podcast/PodcastConcatenator.kt`,
+  `capsule/podcast/PodcastConcatenatorImpl.kt`.
+. *Prod modifiés* (5) : `CapsuleConfig.kt`, `CapsuleConfigMerger.kt`,
+  `CapsuleModels.kt`, `CapsulePlugin.kt`, `CapsuleManager.kt`.
+. *Test créés* (2) : `PodcastConfigTest.kt` (3 unit),
+  `PodcastConcatenatorTest.kt` (20 unit).
+. *Test modifiés* (1) : `CapsuleConfigMergerTest.kt` (+10 unit podcast).
+
+== Statut EPIC
+
+CAP-PODCAST 2/3 US (US-0 ✅ S-125, US-1 ✅ S-126, US-2 TODO S-127).
+Domaine `capsule.podcast` (13ème) créé — 4 fichiers prod + 2 test.
+Factory `resolvePodcastConcatenator` = 8ème `resolve*`.
+
+== Prochaine session (S-127)
+
+CAP-PODCAST US-2 — tâche `generateCapsulePodcast` + wiring
+`CapsuleManager` + `CapsuleMessages` 25ème key + Cucumber BDD
+(3 scénarios `@podcast`) + runner dédié 17ème `CapsulePodcastCucumberRunner`
++ steps préfixés "podcast" (bug S-088) + `CucumberTaskSpec
+("cucumberTestPodcast")` 17ème. ~3 pts.
