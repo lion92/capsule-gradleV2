@@ -1,0 +1,85 @@
+= Session 120 — Capsule (Détroit N2) — EPIC MEMPHIS-BOM-FIX US-5 + CAP-TRANSCRIPT clôture backlog
+
+:borough: Détroit — capsule-gradle (N2, Plugin Gradle capture video capsule)
+:session: 120
+:date: 2026-08-25
+:session_precedente: 119 — CAP-TRANSCRIPT US-5 Cucumber BDD
+
+== Mission
+
+EPIC MEMPHIS-BOM-FIX US-5 : Re-appliquer fix capsule (catalogue
+`slider` → `slider-plugin` + bump BOM 0.0.27 + codebase 0.0.10) + valider
+`test` + `cucumberTestTranscript` VERT. Clôture EPIC + sync BACKLOG
+(CAP-TRANSCRIPT US-5 `⬜ TODO` → `✅ TERMINÉ S-119`).
+
+== Contexte
+
+CAP-TRANSCRIPT US-5 déjà codée (commit `0842c33` S-119) mais BACKLOG Détroit
+stale (`⬜ TODO`). Gate `cucumberTestTranscript` → BUILD FAILED résolution
+`slider:0.0.18` 404 (bug BOM MEMPHIS). EPIC MEMPHIS-BOM-FIX cadré S-208
+cross-borough (Queens + Memphis + Detroit).
+
+== Réalisations
+
+=== US-5 — Fix capsule catalogue + retrait testImplementation(libs.slider)
+
+. Catalogue `gradle/libs.versions.toml` :
+  ** `slider` version `0.0.16` → `0.0.18`.
+  ** `slider` library `name = "slider"` → `name = "slider-plugin"` (artifactId
+     réel depuis aplatissement slider S-067).
+  ** `codebase` version `0.0.8` → `0.0.10`.
+  ** `workspace-bom` version `0.0.16` → `0.0.27`.
+. **Bug discovery** : `testImplementation(libs.slider)` (build.gradle.kts
+  ligne 232) amenait Groovy 3.0.17 sur le classpath de test via la chaîne :
+  `slider-plugin:0.0.18` → `asciidoctor-gradle-jvm-slides:5.0.0-alpha.1` →
+  `jrubygradle-resolver:2.1.2` → `groovy-nio:3.0.17`.
+  Gradle 9.6.1 (ProjectBuilder) utilise Groovy 4 — conflit 3.x vs 4.x casse
+  `org.codehaus.groovy.runtime.InvokerHelper` (`NoClassDefFoundError` +
+  `ExceptionInInitializerError`). 79/917 tests unitaires FAILED (préexistant
+  depuis bump codebase 0.0.8 S-119, documenté S-208 comme "conflit classpath
+  induit par résolution double slider/slider-plugin" — root cause réelle :
+  Groovy 3.x transitif).
+. Fix : retrait `testImplementation(libs.slider)` — aucun test n'importait
+  slider (vérifié : `grep -rn "import slider\." src/` = zéro).
+  `compileOnly(libs.slider)` conservé (requis runtime : CapsulePlugin applique
+  slider sur le projet consommateur).
+. `compileKotlin --rerun-tasks` VERT (BOM 0.0.27 + slider-plugin + codebase
+  0.0.10 résolvables depuis mavenLocal).
+. `compileTestKotlin --rerun-tasks` VERT.
+
+=== Gates
+
+| Gate | Résultat | Détail |
+|------|----------|--------|
+| `compileKotlin` | ✅ BUILD SUCCESSFUL | BOM 0.0.27 résolvable |
+| `compileTestKotlin` | ✅ BUILD SUCCESSFUL | zéro import slider |
+| `test` | ✅ BUILD SUCCESSFUL | 917 tests, 0 failures (baseline restaurée) |
+| `cucumberTestTranscript` | ✅ BUILD SUCCESSFUL | 4/4 scénarios PASSED |
+
+=== CAP-TRANSCRIPT — clôture backlog
+
+CAP-TRANSCRIPT US-5 (Cucumber BDD) était déjà codée en S-119 (commit
+`0842c33`) mais BACKLOG/INDEX Détroit restait stale (`⬜ TODO`). Sync :
+CAP-TRANSCRIPT EPIC TERMINÉ 6/6 US (US-0 cadrage S-114, US-1 config S-115,
+US-2 plan+builder S-116, US-3 enhancer S-117, US-4 tâche S-118, US-5
+cucumber S-119).
+
+== Fichiers modifiés
+
+. `capsule-gradle/capsule-plugin/gradle/libs.versions.toml` — slider 0.0.16 →
+  0.0.18, slider name "slider" → "slider-plugin", codebase 0.0.8 → 0.0.10,
+  workspace-bom 0.0.16 → 0.0.27.
+. `capsule-gradle/capsule-plugin/build.gradle.kts` — retrait
+  `testImplementation(libs.slider)` (Groovy 3.x conflit ProjectBuilder).
+
+== EPIC MEMPHIS-BOM-FIX — TERMINÉ 5/5 US
+
+Cross-borough Memphis (BOM 0.0.27 Central) + Queens (codebase 0.0.10 Central)
++ Detroit (capsule fix + 917 unit 0 FAIL). Bug bloquant capsule résolu.
+Borough Détroit en maintenance — reste P2 (CAP-CHAPITRE, CAP-PODCAST,
+CAP-PREVIEW, CAP-CR3-4, CAP-28).
+
+== Zéro
+
+Zéro code production modifié (catalogue + retrait dépendance test inutile).
+Zéro secret, zéro token, zéro régression.

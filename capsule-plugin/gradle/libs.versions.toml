@@ -1,6 +1,6 @@
 [versions]
 capsule = "0.0.1-SNAPSHOT"
-slider = "0.0.16"
+slider = "0.0.18"
 kotlin = "2.4.10"
 junit-platform-launcher = "1.10.2"
 junit-platform = "1.14.3"
@@ -8,16 +8,16 @@ playwright = "1.52.0"
 kover = "0.9.8"
 cucumber = "7.34.3"
 jackson = "2.18.3"
-codebase = "0.0.8"
+codebase = "0.0.10"
 koog = "1.0.0"
-workspace-bom = "0.0.16"
+workspace-bom = "0.0.27"
 i18n-contracts = "0.0.2"
 codebase-contracts = "0.0.2"
 
 [libraries]
 kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit5", version.ref = "kotlin" }
 kotlin-stdlib-jdk8 = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib-jdk8" }
-slider = { group = "education.cccp", name = "slider", version.ref = "slider" }
+slider = { group = "education.cccp", name = "slider-plugin", version.ref = "slider" }
 playwright = { group = "com.microsoft.playwright", name = "playwright", version.ref = "playwright" }
 cucumber-java = { module = "io.cucumber:cucumber-java", version.ref = "cucumber" }
 cucumber-junit-platform-engine = { module = "io.cucumber:cucumber-junit-platform-engine", version.ref = "cucumber" }

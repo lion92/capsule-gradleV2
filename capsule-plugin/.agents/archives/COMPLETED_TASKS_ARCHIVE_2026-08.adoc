@@ -1202,3 +1202,20 @@ glossarySection + 2 `DefaultCapsulePromptBuilderTest` glossary) → REFACTOR
 strict (`glossarySection = ""` défaut → tests existants inchangés).
 
 Rapport : `.agents/sessions/110-cap-glossary-us1.adoc`.
+
+== Session 120 — EPIC MEMPHIS-BOM-FIX US-5 TERMINÉ (2026-08-25)
+
+Cross-borough MEMPHIS (BOM 0.0.27 Central) + Queens (codebase 0.0.10
+Central) + Detroit (capsule fix).
+
+Catalogue capsule fixé : `slider` → `slider-plugin` (artifactId réel depuis
+aplatissement slider S-067), slider 0.0.16 → 0.0.18, codebase 0.0.8 → 0.0.10,
+BOM 0.0.16 → 0.0.27.
+
+Bug discovery : `testImplementation(libs.slider)` amenait Groovy 3.0.17
+(via asciidoctor-gradle-jvm-slides → jrubygradle-resolver) sur le classpath
+de test, cassant ProjectBuilder (Groovy 4 vs 3.x). 79/917 tests FAILED
+préexistantes. Retrait — aucun test n'importait slider.
+
+Gate : `test` 917 tests 0 FAIL + `cucumberTestTranscript` 4/4 PASSED.
+CAP-TRANSCRIPT EPIC TERMINÉ 6/6 US. EPIC MEMPHIS-BOM-FIX TERMINÉ 5/5 US.

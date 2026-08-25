@@ -229,7 +229,6 @@ dependencies {
     testImplementation(libs.bundles.cucumber)
     testImplementation("io.cucumber:cucumber-junit:7.34.3")
     testImplementation("org.junit.vintage:junit-vintage-engine:5.10.0")
-    testImplementation(libs.slider)
 }
 
 afterEvaluate {

@@ -1,24 +1,26 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
-:session: 120
+:session: 121
 :borough: Détroit
-:session_precedente: 119 — CAP-TRANSCRIPT US-5 Cucumber BDD
+:session_precedente: 120 — EPIC MEMPHIS-BOM-FIX US-5 TERMINÉ (cross-borough)
 
 == Contexte Hérité
 
-Session 119 — CAP-TRANSCRIPT US-5 Cucumber BDD (TERMINÉE) : 
-- Écriture du fichier de fonctionnalité capsule_transcript.feature avec 4 scénarios
-- Création du runner Cucumber dédié CapsuleTranscriptCucumberRunner
-- Création des définitions d'étapes CapsuleTranscriptSteps
-- Mise à jour de build.gradle.kts pour ajouter la tâche Cucumber dédiée
-- Tous les scénarios passent : BUILD SUCCESSFUL
-- EPIC CAP-TRANSCRIPT maintenant à 6/6 US terminées (US-0 à US-5)
+Session 120 — EPIC MEMPHIS-BOM-FIX US-5 TERMINÉ (cross-borough MEMPHIS +
+Queens) :
+- Catalogue capsule fixé : `slider` → `slider-plugin`, slider 0.0.16 → 0.0.18,
+  codebase 0.0.8 → 0.0.10, BOM 0.0.16 → 0.0.27
+- Bug discovery : `testImplementation(libs.slider)` amenait Groovy 3.0.17
+  (via asciidoctor-gradle-jvm-slides) qui cassait ProjectBuilder (79/917
+  tests FAILED préexistantes). Retrait — aucun test n'importait slider.
+- Gate : `test` 917 tests 0 FAIL + `cucumberTestTranscript` 4/4 PASSED
+- CAP-TRANSCRIPT EPIC TERMINÉ 6/6 US (BACKLOG sync US-5 ✅ S-119)
+- EPIC MEMPHIS-BOM-FIX TERMINÉ 5/5 US cross-borough
 
-== Mission Session 120
+== Mission Session 121
 
-1. CAP-TRANSCRIPT US-6 TODO (selon l'INDEX.adoc) :
-   - Selon l'INDEX.adoc, la prochaine US est TODO (à définir)
-   - Vérifier les issues ouvertes dans le domaine capsule.transcript pour voir ce qui reste
-   - Si aucune US définie, clôturer l'EPIC CAP-TRANSCRIPT et passer au prochain EPIC (CAP-CHAPITRE)
+Borough Détroit en maintenance — tous EPICs P0/P1 terminés.
+Reste P2 (optionnel, à planifier) :
+- CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28
 
 == Méthodologie
 
@@ -35,6 +37,8 @@ Pas de subagent, pas de parallélisation.
 * Ports Ollama : 11437-11465 rotation (11434-11436 INTERDITS)
 * `CapsuleMessages` object (domaine `capsule.i18n`) — 11 `Messages*.properties` 10 langues, 24 keys (23 + transcript S-118)
 * DSL 4 sources pattern : ENV < props < YAML < CLI. Merger helpers `mergeStr/mergeInt/mergeDouble/mergeBoolean/mergeStrList` + `mergeVersioning`/`mergeCaptureStrategy`/`mergeOutputFormat`/`mergeTranscriptStrategy` (enums)
-* 3 loaders domaine `capsule.context` : `DocContextLoader` (corpus documentaire, CAP-DOCCONTEXT), `PedagogicalScenarioLoader` (scénario pédagogique, CAP-SPD), `GlossaryLoader` (glossaire terminologique, CAP-GLOSSARY). Tous object pur, mirror pattern, `ContextChannel.Docs.truncateToTokens` pour la troncation budget.
+* 3 loaders domaine `capsule.context` : `DocContextLoader`, `PedagogicalScenarioLoader`, `GlossaryLoader`. Tous object pur, mirror pattern, `ContextChannel.Docs.truncateToTokens` pour la troncation budget.
 * Pattern object pur pour commande ffmpeg : `AudioPostCommand` (`capsule.audio`), `SubtitleBurnInCommand` (`capsule`, CAP-27), `FormatConversion` (`capsule`, CAP-MP4). `buildArgv(...)` sans I/O, fully testable.
 * `capsule.feed.SlideSegment` (`CapsuleFeedModels.kt:22-33`) — `index`, `title`, `speakerNote`, `type: SlideType`, `manimScene: String?`. Invariants title/speakerNote non-blank. Source de vérité contenu pédagogique. `TranscriptPlan` consomme `List<SlideSegment>` (pas nouveau modèle).
+* `compileOnly(libs.slider)` conservé (runtime : CapsulePlugin applique slider). `testImplementation(libs.slider)` RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder).
+* Catalogue : `slider-plugin` (artifactId réel S-067), slider 0.0.18, codebase 0.0.10, BOM 0.0.27.
