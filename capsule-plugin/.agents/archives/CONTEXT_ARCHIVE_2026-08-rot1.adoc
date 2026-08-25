@@ -1,0 +1,66 @@
+= CONTEXT_ARCHIVE_ROT1 — Capsule Gradle (Détroit)
+:date: 2026-08-25
+:session: 127 (rotation contexte — archivage massif)
+:raison: Les fichiers agentiques (INDEX 135KB, SESSIONS_HISTORY 98KB, BACKLOG 3206 lignes, TEST_COVERAGE 47KB) encombrent le contexte agentique. Rotation : archivage des sessions < 117 + EPICs terminés + anciennes sections couverture.
+
+== Méthode d'archivage rotatif
+
+*Principe* : Le contexte agentique est une fenêtre glissante. Les sessions
+anciennes et EPICs terminés détaillés n'ont pas besoin d'être EAGER — ils
+sont archivés (LAZY) et consultables sur demande.
+
+*Seuil* : Garder les 10 dernières sessions (117-126) + roadmap agrégée +
+EPICs en cours. Archiver tout le reste.
+
+== Contenu archivé
+
+=== Sessions archivées (000-116)
+
+Les rapports de sessions 000-116 restent dans `.agents/sessions/` (LAZY,
+consultables par nom). Le `SESSIONS_HISTORY.adoc` ne garde que les 10
+dernières (117-126) + un résumé compact une-ligne pour les archivées.
+
+=== EPICs terminés archivés (détails BACKLOG)
+
+Les sections détaillées des EPICs suivants ont été supprimées du BACKLOG
+aktif — leurs détails sont dans `.agents/sessions/` (rapports par US) et
+dans l'INDEX (table de statut agrégée) :
+
+* EPIC CR — Code Review Globale (10/10 EPICs, S-040→S-075)
+* EPIC CAP-13 — Config Multi-Source (S-019/020)
+* EPIC CAP-26 — Style burn-in configurable (S-039)
+* EPIC CAP-27 — VTT burn-in (S-113)
+* EPIC CAP-28 — Coverage gaps (S-124)
+* EPIC CAP-29 — Pipeline multi-langue (S-082)
+* EPIC CAP-ARCH — LLM-driven (S-090)
+* EPIC CAP-MODEL — Unification feed (S-069)
+* EPIC CAP-CR3-1 — CI full + probe durée (S-101)
+* EPIC CAP-CR3-2 — Mode strict anti-NoOp (S-091)
+* EPIC CAP-CR3-3 — ScreenshotCapture (S-096)
+* EPIC CAP-MP4 — Export MP4 (S-100)
+* EPIC CAP-AUDIO — Post-production audio (S-106)
+* EPIC CAP-TRANSCRIPT — Reverse pipeline article (S-119)
+* EPIC CAP-GLOSSARY — Injection terminologique (S-112)
+* EPIC CAP-PROVENANCE — Audit context (S-108)
+* EPIC CAP-DOCCONTEXT — Injection corpus doc (S-093)
+* EPIC CAP-SPD — Consommation métadonnées SPD (S-095)
+* EPIC SLD-11 — Expulsion slider.capsule (S-058)
+* EPIC CAP-ANIM — Remotion capture (S-122)
+
+=== Anciennes sections TEST_COVERAGE_ANALYSIS archivées (S-032 → S-119)
+
+Les sections de couverture antérieures à S-120 ont été supprimées du
+`TEST_COVERAGE_ANALYSIS.adoc` aktif — la dernière section (S-121) est
+conservée comme snapshot courant. L'historique détaillé est reconstituable
+depuis `.agents/sessions/` (rapports par session).
+
+== Statut post-rotation
+
+* `SESSIONS_HISTORY.adoc` : 98KB → ~10KB (10 dernières + résumé)
+* `INDEX.adoc` : 135KB → ~8KB (10 dernières + roadmap agrégée)
+* `BACKLOG.adoc` : 3206 lignes → ~80 lignes (table statut + EPICs en cours)
+* `TEST_COVERAGE_ANALYSIS.adoc` : 47KB → ~5KB (dernière section seule)
+
+_Référence_ : AGENT.adoc Loi de l'Économie d'Encre — un artefact déjà produit
+et valide ne doit pas être rechargé. Le contexte agentique est un artefact
+coûteux (tokens LLM) — le garder maigre est une économie d'encre.

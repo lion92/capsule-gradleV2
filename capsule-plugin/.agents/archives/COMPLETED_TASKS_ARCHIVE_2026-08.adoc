@@ -1,5 +1,44 @@
 = COMPLETED_TASKS_ARCHIVE — Août 2026
-:date: 2026-08-25
+:date: 2026-08-26
+
+== Session 127 — EPIC CAP-PODCAST TERMINÉ 3/3 US ✅
+
+CAP-PODCAST US-2 tâche + wiring + Cucumber BDD. `GenerateCapsulePodcastTask`
+(113 lignes, `capsule/podcast/`) — tâche Gradle `@DisableCachingByDefault` :
+`@InputFiles audioFiles`, `@Input deckName`, `@OutputFile podcastOutput`,
+`@Input podcastEnabled`. TaskAction : skip si `!enabled` ; skip si output
+existe ET `MediaProbeUtil.probeDuration > 0.0` (économie d'encre) ; skip
+si `audioFiles` vide → warn ; factory `resolvePodcastConcatenator` +
+`concatenate`. Dégradé NoOp → warn + garde rien (backward compat).
+`CapsuleManager.registerGeneratePodcastTask` (16ème, L371) — pattern
+`registerGenerateTranscriptTask`. `audioFiles` résolus depuis
+`build/capsule/<deckName>/slide-*.mp3` (provider lazy), `podcastOutput`
+convention `build/capsule/<deckName>-podcast.mp3`, `dependsOn("generateCapsuleVideo")`.
+`CapsuleMessages` 25ème key (11 `Messages*.properties`). Cucumber
+`capsule_podcast.feature` 3 scénarios `@podcast` + runner dédié 17ème
+`CucumberTaskSpec("cucumberTestPodcast")` + `CapsulePodcastSteps` préfixés
+"podcast" (bug S-088). `GeneratePodcastFunctionalTest` 3 tests (task
+registered, disabled skip, enabled NoOp → degraded no MP3). `check` VERT
+4m25s — 1023 unit (+9 i18n), 72 functional (+3), 17 cucumber dédiés GREEN.
+Domaine `capsule.podcast` (13ème) clos. EPIC CAP-PODCAST TERMINÉ 3/3 US
+(US-0 S-125, US-1 S-126, US-2 S-127).
+
+== Session 126 — CAP-PODCAST US-1 config+concatenator+factory ✅
+
+Domaine `capsule.podcast` (13ème) créé : `PodcastConfig` (2 champs
+`enabled=false` + `outputFile=""` defaults backward compat) +
+`PodcastConcatenator` interface + `PodcastConcatCommand` object pur +
+`PodcastConcatenatorImpl` (FFmpeg concat demuxer) + `NoOpPodcastConcatenator`
+(returns false degraded). `CapsuleConfig` 13ème section `podcast` +
+`mergePodcastConfig` 4 sources + `CapsuleExtension` 2 properties +
+`pushConfigIntoExtension` podcast block. `CapsuleManager.resolvePodcastConcatenator`
+8ème factory (pattern `resolveAudioPostProcessor` — noop→NoOp,
+unavailable+strict→throw). 1014 unit VERT (+28 net baseline 986).
+
+== Session 125 — CAP-PODCAST US-0 Cadrage ✅
+
+Gouvernance pure (zéro code). 15 constats + 12 décisions. Domaine
+`capsule.podcast` 13ème. 3 US ~4 pts. Pattern S-057.
 
 == Session 122 — EPIC CAP-ANIM TERMINÉ 3/3 US ✅
 

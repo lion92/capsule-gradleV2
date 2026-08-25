@@ -172,6 +172,18 @@ cucumberConventions {
             runnerClass = "capsule.scenarios.CapsuleRemotionCucumberRunner",
             timeoutMinutes = 15,
         ),
+        // CAP-PODCAST US-2 — podcast MP3 extraction (audio-only mobile consumption).
+        // Dedicated runner pattern S-082; steps prefixed "podcast" (bug S-088 glue
+        // capsule.scenarios shared). Uses NoOp concatenator (no real FFmpeg); validates
+        // wiring + economy-of-ink guard + factory dispatch, not the concat itself
+        // (covered by US-1 unit tests for PodcastConcatenatorImpl/PodcastConcatCommand).
+        CucumberTaskSpec(
+            name = "cucumberTestPodcast",
+            features = listOf("src/test/features/capsule_podcast.feature"),
+            tags = listOf("@podcast"),
+            runnerClass = "capsule.scenarios.CapsulePodcastCucumberRunner",
+            timeoutMinutes = 30,
+        ),
         // Integration cucumber run — scenarios tagged @integration or @manim
         // (burn-in E2E with real ffmpeg, Manim pipeline NoOp). Excluded from the
         // default cucumberTest runner by `not @integration`; this dedicated task

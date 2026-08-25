@@ -1,0 +1,129 @@
+= Session 127 — CAP-PODCAST US-2 tâche + wiring + Cucumber BDD
+:borough: Détroit
+:date: 2026-08-26
+:epic: CAP-PODCAST
+:us: US-2
+:method: baby-step TDD/BDD (unit → functional → cucumber)
+:score: 9/10
+
+== Contexte
+
+Reprise capsule-gradle. La session 127 avait été démarrée puis interrompue
+avant commit : le working tree contenait déjà l'implémentation US-2 complète
+non committée (task, wiring, cucumber, functional, messages, rotation de
+contexte INDEX/BACKLOG/HISTORY/COVERAGE → archive rot1). La mission de cette
+session a été de (1) auditer l'état réel, (2) vérifier que tout compile et
+passe, (3) nettoyer un artefact parasite (`slides/misc/` deck demo non
+référencé), (4) clôturer formellement la session et committer.
+
+== Mission
+
+CAP-PODCAST US-2 — tâche `generateCapsulePodcast` + wiring `CapsuleManager`
++ `CapsuleMessages` 25ème key + Cucumber BDD 3 scénarios + runner dédié
+17ème, ~3 pts.
+
+== Constats (audit working tree non committé)
+
+. `GenerateCapsulePodcastTask.kt` (113 lignes, `capsule/podcast/`) — tâche
+  Gradle `@DisableCachingByDefault` : `@InputFiles audioFiles`,
+  `@Input deckName`, `@OutputFile podcastOutput`, `@Input podcastEnabled`.
+  TaskAction : skip si `!enabled` → log "skipped" ; skip si output existe
+  ET `MediaProbeUtil.probeDuration > 0.0` (économie d'encre) ; skip si
+  `audioFiles` vide → warn ; factory `resolvePodcastConcatenator` +
+  `concatenate`. Dégradé NoOp → warn + garde rien (backward compat).
+. `CapsuleManager.registerGeneratePodcastTask` (16ème registration, L371) —
+  pattern `registerGenerateTranscriptTask` (L327-368). `audioFiles` résolus
+  depuis `build/capsule/<deckName>/slide-*.mp3` (provider lazy),
+  `podcastOutput` convention `build/capsule/<deckName>-podcast.mp3`,
+  `dependsOn("generateCapsuleVideo")`. `podcastEnabled` 4 sources
+  (extension < prop < default false).
+. `CapsuleMessages` 25ème key `task.generateCapsulePodcast.description`
+  ajoutée aux 11 `Messages*.properties` (EN + 10 traduites).
+. `CucumberTaskSpec("cucumberTestPodcast")` 17ème câblé `build.gradle.kts`
+  (runner `CapsulePodcastCucumberRunner`, feature `capsule_podcast.feature`,
+  tags `@podcast`, timeout 30min).
+. `capsule_podcast.feature` (3 scénarios `@podcast`) : default disabled →
+  skipped no-op, enabled + slide MP3s + NoOp ffmpeg → degraded no MP3,
+  enabled + no slide MP3s → warns gracefully.
+. `CapsulePodcastSteps` (120 lignes) — 8 step defs préfixés "podcast"
+  (bug S-088 glue `capsule.scenarios` partagée), GradleRunner self-contained
+  pattern `CapsuleAudioPostSteps`, `-x generateCapsuleVideo` pour isoler.
+. `GeneratePodcastFunctionalTest` (3 tests) : task registered in generate
+  group, disabled default no-op skip, enabled NoOp → degraded no MP3.
+. `CapsuleMessagesTest` + `MessagesFrTranslationTest` étendus (25ème key
+  ajoutée aux `@ValueSource` — +9 paramétrés i18n).
+. Artefact parasite `slides/misc/capsule-plugin.adoc` (deck demo non
+  référencé dans le build, non committé) — supprimé.
+
+== Décisions
+
+. Continuer sur le working tree existant plutôt que de tout rejouer : le
+  code US-2 était complet et cohérent avec le cadrage US-0 (S-125) + US-1
+  (S-126). Réécrire aurait violé l'économie d'encre.
+. Suppression `slides/misc/` : dossier parasite non référencé dans
+  `settings.gradle.kts` ni `build.gradle.kts`, non tracé par git, créé à
+  14:20 (avant la session). Nettoyage pour garder le diff propre.
+. Pas de nouveau code écrit cette session — validation + clôture + commit
+  uniquement. Le baby-step TDD/BDD avait été fait dans la session
+  interrompue ; cette session confirme GREEN.
+
+== Baby-step TDD/BDD (validation)
+
+* RED → GREEN → REFACTOR déjà joué (session interrompue) :
+  - functionalTest : 3/3 PASSED (27s)
+  - cucumberTestPodcast --rerun-tasks : 3/3 scénarios PASSED (1m18s)
+* `check` global BUILD SUCCESSFUL (4m25s) :
+  - 1023 unit VERT (+9 net baseline 1014 — i18n @ValueSource étendus)
+  - 72 functional VERT (+3 net baseline 69 — GeneratePodcastFunctionalTest)
+  - 17 cucumber dédiés GREEN (cucumberTestPodcast ajouté)
+  - Kover VERT, validatePlugins VERT, zéro régression
+
+== Livrables
+
+. `src/main/kotlin/capsule/podcast/GenerateCapsulePodcastTask.kt` (113 lignes)
+. `src/main/kotlin/capsule/CapsuleManager.kt` (+40 lignes, registration 16ème)
+. `src/main/resources/capsule/i18n/Messages*.properties` (11 fichiers, 25ème key)
+. `src/test/features/capsule_podcast.feature` (3 scénarios @podcast)
+. `src/test/kotlin/capsule/scenarios/CapsulePodcastCucumberRunner.kt`
+. `src/test/kotlin/capsule/scenarios/CapsulePodcastSteps.kt` (120 lignes)
+. `src/functionalTest/kotlin/capsule/podcast/GeneratePodcastFunctionalTest.kt` (3 tests)
+. `src/test/kotlin/capsule/i18n/CapsuleMessagesTest.kt` + `MessagesFrTranslationTest.kt` (25ème key)
+. `build.gradle.kts` (17ème `CucumberTaskSpec`)
+. `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc` (rotation contexte)
+. `.agents/INDEX.adoc`, `BACKLOG.adoc`, `SESSIONS_HISTORY.adoc`,
+  `TEST_COVERAGE_ANALYSIS.adoc` (rotation + EPIC CAP-PODCAST TERMINÉ)
+
+== État EPIC
+
+EPIC CAP-PODCAST TERMINÉ 3/3 US :
+- US-0 cadrage ✅ (S-125)
+- US-1 config+concatenator+factory ✅ (S-126)
+- US-2 tâche+wiring+cucumber ✅ (S-127)
+
+Domaine `capsule.podcast` (13ème) clos. Le borough Détroit produit désormais
+un podcast MP3 audio-only (concat demuxer FFmpeg, lossless, no re-encoding)
+en plus du WebM natif MP4/H.264 + audio post-produit.
+
+== Vérifications
+
+* `compileKotlin` UP-TO-DATE VERT
+* `functionalTest --tests GeneratePodcastFunctionalTest` 3/3 PASSED
+* `cucumberTestPodcast --rerun-tasks` 3/3 scénarios PASSED
+* `check` BUILD SUCCESSFUL 4m25s — 1023 unit + 72 functional + 17 cucumber
+* Kover VERT, validatePlugins VERT
+* `grep -r "TOKEN\|SECRET\|PASSWORD\|API_KEY\|gho_\|ghp_"` — zéro secret
+* Zéro bump BOM, zéro régression, backward compat préservée
+
+== Reste P2 (après CAP-PODCAST)
+
+* CAP-PREVIEW — Flag `capture.previewOnly` 4 sources + skip mux WebM. 3 US ~4 pts.
+* CAP-CHAPITRE — Intro/outro + chapter markers. 5 US ~10 pts.
+* CAP-CR3-4 — Convention Gradle `resolveScriptDir/resolveDeckDir`. ~2 pts.
+
+== Score
+
+9/10 — Session de validation + clôture d'un working tree interrompu. Le
+code US-2 était déjà écrit et cohérent ; la valeur ajoutée est la
+vérification GREEN, le nettoyage de l'artefact parasite, et la clôture
+formelle (rapport + sync backlog + commit). Pas de nouveau code — d'où
+le 9 plutôt que 10.

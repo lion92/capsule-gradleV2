@@ -35,7 +35,10 @@ class CapsuleMessagesTest {
         "task.extractSpeakerNotes.description",
         "task.translateAndExtractSpeakerNotes.description",
         "task.translateAndGenerateCapsuleVideos.description",
-        "task.generateCapsuleContentAndVideos.description"
+        "task.generateCapsuleContentAndVideos.description",
+        "task.validateCapsuleVideoDuration.description",
+        "task.generateCapsuleTranscript.description",
+        "task.generateCapsulePodcast.description"
     ])
     fun `all task keys resolve in English`(key: String) {
         val value = CapsuleMessages.get(key, "en")
@@ -67,7 +70,10 @@ class CapsuleMessagesTest {
         "task.extractSpeakerNotes.description",
         "task.translateAndExtractSpeakerNotes.description",
         "task.translateAndGenerateCapsuleVideos.description",
-        "task.generateCapsuleContentAndVideos.description"
+        "task.generateCapsuleContentAndVideos.description",
+        "task.validateCapsuleVideoDuration.description",
+        "task.generateCapsuleTranscript.description",
+        "task.generateCapsulePodcast.description"
     ])
     fun `all task keys resolve in French`(key: String) {
         val value = CapsuleMessages.get(key, "fr")
