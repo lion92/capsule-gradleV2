@@ -1,11 +1,9 @@
 [versions]
-capsule = "0.0.1-SNAPSHOT"
-slider = "0.0.16"
+capsule = "0.0.1"
 
 [libraries]
 
 [plugins]
-slider = { id = "education.cccp.slider", version.ref = "slider" }
 capsule = { id = "education.cccp.capsule", version.ref = "capsule" }
 
 [bundles]

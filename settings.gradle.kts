@@ -1,4 +1,9 @@
-pluginManagement.repositories.mavenLocal()
-pluginManagement.repositories.gradlePluginPortal()
+pluginManagement {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
 
 rootProject.name = "capsule-gradle"
