@@ -18,9 +18,71 @@ Queens) :
 
 == Mission Session 121
 
-Borough Détroit en maintenance — tous EPICs P0/P1 terminés.
-Reste P2 (optionnel, à planifier) :
-- CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28
+=== Intégration PR #1 — "Fix/build toolchain et pipeline" (lion92)
+
+PR : https://github.com/cccp-education/capsule-gradle/pull/1
+Branche : `pr-1` (fetchée localement). Base : `e8f1fec` (avant S-120).
+7 commits, 42 fichiers, +1615/-201.
+
+==== Commits de la PR
+
+. `5e86e90` fix(build) — conventions 0.0.2 → 0.0.3 (toolchain Java 25) + CI
+  JDK 25 + exclusion Groovy 3 `testRuntimeClasspath { exclude(group = "org.codehaus.groovy") }`
+. `5477d62` fix(i18n) — namespace bundle `i18n/Messages` → `capsule/i18n/Messages`
+  (conflit classpath avec slider) + 10 langues complétées (task.group.verification +
+  validateCapsuleVideoDuration.description)
+. `253d104` fix(video) — 4 défauts capture : narration double (injectSubtitleTrack
+  réinjectait AUDIO_INJECT_SCRIPT), vidéo tronquée SCREENSHOT (listFiles .first()
+  prenait slide-N.webm au lieu de capsule.webm), parallelCapture ne produisait
+  rien (cherchait "slide.webm" inexistant), ffmpeg hardcodé ignorait
+  ffmpegExecutablePath
+. `846b13a` docs — réaligne READMEs + INDEX + session 119 sur code réel
+. `b495253` fix(video) — capture fonctionnelle conteneur : Chromium --no-sandbox,
+  navigateur unique par instance (pas 1/diapo), encodage PNG→WebM parallèle,
+  reveal.js CDN supprimé (mono-diapo), FFmpeg stderr→log file
+. `671b886` feat(anim) — **CAP-ANIM** stratégie `CaptureStrategy.REMOTION` :
+  composition image par image (cascade, dérive, fondu, progressbar), React
+  embarqué jar, `RemotionPlanner`/`RemotionCaptureImpl`/`RemotionTemplate`,
+  section `capsule.remotion.*` DSL 4 sources
+. `5cee4b2` feat(anim) — Remotion MP4/H.264 + Manim incrusté (`OffthreadVideo`),
+  `PlaywrightCapture.outputExtension()`, `AudioCodecs` codec selon conteneur
+. `6a1cd63` fix(tts) — generateCapsule ne réécrit plus narration existante
+  (CapsuleBuildTask.synthesize appelait engine.synthesize sans condition)
+
+==== Conflits de merge (testé S-120)
+
+. `capsule-plugin/build.gradle.kts` — **AUTO-FUSIONNÉ** ✅. Ma version retire
+  `testImplementation(libs.slider)`, la PR ajoute exclusion Groovy 3 +
+  bump conventions 0.0.3. Approches complémentaires.
+. `capsule-plugin/.agents/INDEX.adoc` — **CONFLIT MANUEL** sur l'en-tête.
+  Garder ma version S-120 (plus récente), intégrer les corrections de la PR
+  (session 119 dupliquée, CAP-PROVENANCE/CAP-TRANSCRIPT marqués TODO).
+. `capsule-plugin/gradle/libs.versions.toml` — **PAS DE CONFLIT** (PR ne touche
+  pas le catalogue).
+
+==== Plan d'intégration (baby-step)
+
+. `git merge pr-1` — résoudre conflit INDEX.adoc (garder S-120 + corrections PR)
+. Vérifier cohérence post-merge :
+  ** Conventions 0.0.3 + BOM 0.0.27 + codebase 0.0.10 compatibles ?
+  ** Exclusion Groovy 3 + retrait testImplementation(libs.slider) coexistent ?
+  ** Namespace i18n `capsule/i18n/Messages` — `CapsuleMessages.kt` aligné ?
+  ** Nouveau `CaptureStrategy.REMOTION` — merger/config/extension gèrent l'enum ?
+. Gate : `compileKotlin` + `compileTestKotlin` + `test` + `cucumberTestTranscript`
+. Nouveaux domaines à valider : `AudioCodecs.kt`, `RemotionCapture.kt`,
+  `RemotionPlanner.kt`, `RemotionTemplate.kt` (CAP-ANIM)
+. CI workflows : `full-tests.yml` + `test.yml` (JDK 25 +
+  `cucumberTestDurationValidation` au lieu de `validateCapsuleVideoDuration`)
+. Sync gouvernance : INDEX/PROMPT_REPRISE/SESSIONS_HISTORY + EPIC CAP-ANIM BACKLOG
+
+==== Points d'attention
+
+* Conventions 0.0.3 pas sur Central (mavenLocal seulement). Vérifier
+  compatibilité BOM 0.0.27.
+* Namespace i18n : la PR déplace `Messages.properties` →
+  `capsule/i18n/Messages.properties` (conflit classpath avec slider résolu).
+* CAP-ANIM = nouveau EPIC (Remotion). À cadrer dans BACKLOG après merge.
+* 926 tests dans la PR (vs 917 baseline S-120) — +9 tests RemotionPlanner.
 
 == Méthodologie
 
