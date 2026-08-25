@@ -1417,7 +1417,7 @@ class ParallelCaptureTest {
     }
 
     @Test
-    fun `captureSlideParallel limits concurrency to 4 instances`() {
+    fun `captureSlideParallel reuses one capture engine per worker thread`() {
         val project = ProjectBuilder.builder().withProjectDir(tempDir).build()
         val ext = CapsuleExtension(project.objects)
         ext.ttsEngine.set("noop")
@@ -1486,8 +1486,20 @@ ${(1..6).map { i -> """<section data-capsule-slide="$i"><h2>Slide $i</h2></secti
             captureFactory = factory
         )
 
-        assertEquals(6, totalCreated.get(), "All 6 slides should create a capture instance")
+        // One engine per worker thread, not one per slide: resolving an engine
+        // costs a browser launch (plus a second one for the availability probe),
+        // so 6 slides on a 4-thread pool must not cost 6 launches.
+        assertTrue(
+            totalCreated.get() <= 4,
+            "At most one engine per worker thread should be created, was ${totalCreated.get()}"
+        )
         assertTrue(maxConcurrentFactories.get() <= 4, "Max concurrency should be capped at 4, was ${maxConcurrentFactories.get()}")
+        (1..6).forEach { i ->
+            assertTrue(
+                outputDir.resolve("slide-%02d.webm".format(i)).exists(),
+                "Slide $i must still be captured despite the engine being shared"
+            )
+        }
     }
 
     @Test
@@ -1762,10 +1774,21 @@ class CreateSingleSlideHtmlTest {
     }
 
     @Test
-    fun `createSingleSlideHtml includes reveal js script and initialize call`() {
+    fun `createSingleSlideHtml forces the slide visible without pulling a reveal js copy`() {
         val result = CapsuleVideoTask.createSingleSlideHtml(threeSlideDeck, 0)
         assertTrue(result.contains("reveal.js"), "Should include reveal.js script")
-        assertTrue(result.contains("Reveal.initialize"), "Should initialize reveal.js")
+        // Injecting a CDN reveal.js on top of the deck's own runtime re-laid out the
+        // page (titles and captions pushed off-screen) and made parallel capture
+        // require network access. Whatever the deck itself declares in its <head>
+        // is preserved; what must not happen is a *second* copy being added.
+        assertTrue(
+            !result.contains("Reveal.initialize()"),
+            "Must not re-initialize a presentation runtime over the deck's own: $result"
+        )
+        assertTrue(
+            result.contains("display:block!important"),
+            "The extracted slide must be forced visible whatever the deck CSS does: $result"
+        )
     }
 
     @Test

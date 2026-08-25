@@ -105,6 +105,15 @@ open class CapsuleVideoTask : DefaultTask() {
          * @param slideIndex 0-based index of the section within `.slides` container
          * @return Standalone HTML with only the requested slide, preserving head, styles, and scripts
          */
+        /**
+         * Forces the one extracted slide to be visible whatever the deck's own
+         * stylesheet does with `.slides section` (reveal.css hides every slide
+         * but the current one, and positions them absolutely).
+         */
+        internal const val SINGLE_SLIDE_VISIBILITY_CSS: String =
+            ".reveal .slides section{display:block!important;visibility:visible!important;" +
+                "opacity:1!important;transform:none!important;position:relative!important;top:0!important;left:0!important}"
+
         @JvmStatic
         fun createSingleSlideHtml(deckHtml: String, slideIndex: Int): String {
             val headMatch = Regex("""(?s)(<head>.*?</head>)""").find(deckHtml)
@@ -136,8 +145,16 @@ open class CapsuleVideoTask : DefaultTask() {
                 appendLine("    $targetSection")
                 appendLine("  </div>")
                 appendLine("</div>")
-                appendLine("""<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>""")
-                appendLine("<script>Reveal.initialize();</script>")
+                // No reveal.js is pulled in here. The deck already carries whatever
+                // presentation runtime it was built with, in the <head> preserved
+                // above; fetching a second, different copy from a CDN made it
+                // re-layout the page — titles and captions ended up off-screen —
+                // and made parallel capture depend on network access. A single
+                // extracted slide needs no runtime at all, only to be visible, so
+                // the deck's own rules are overridden with one inline stylesheet.
+                appendLine("<style>")
+                appendLine(SINGLE_SLIDE_VISIBILITY_CSS)
+                appendLine("</style>")
                 appendLine("</body>")
                 appendLine("</html>")
             }.trimIndent()
@@ -190,7 +207,11 @@ open class CapsuleVideoTask : DefaultTask() {
                 )
             },
             screenshotFactory = {
-                ScreenshotCaptureImpl(timeout = capsuleExtension.playwrightTimeout.get())
+                ScreenshotCaptureImpl(
+                    timeout = capsuleExtension.playwrightTimeout.get(),
+                    ffmpegPath = capsuleExtension.ffmpegExecutablePath.get(),
+                    encodeParallelism = capsuleExtension.parallelCaptureThreads.get(),
+                )
             },
             noOpCapture = NoOpPlaywrightCapture(),
             enginePath = capsuleExtension.chromiumExecutablePath.get()
@@ -795,13 +816,23 @@ open class CapsuleVideoTask : DefaultTask() {
         val failedSlides = mutableListOf<Int>()
         val slideDurations = computeSlideDurations(parsed, audioDir)
 
+        // One capture engine per worker thread, reused across that thread's slides.
+        // Resolving per slide launched a browser for the availability probe and a
+        // second one for the capture itself — two Chromium instances per slide,
+        // which is what saturated the driver and made this mode unusable.
+        val engines = java.util.concurrent.ConcurrentLinkedQueue<PlaywrightCapture>()
+        val threadEngine = ThreadLocal.withInitial {
+            (captureFactory?.invoke() ?: resolvePlaywrightCapture(slideDurations))
+                .also { engines.add(it) }
+        }
+
         // Read the deck HTML once for createSingleSlideHtml extraction
         val deckHtml = File(deckHtmlPath).readText()
 
         for ((idx, seg) in parsed.segments.withIndex()) {
             val slideDir = outputDir.resolve("slide-${String.format("%02d", seg.index)}")
             futures.add(executor.submit<File?> {
-                val capture = captureFactory?.invoke() ?: resolvePlaywrightCapture(listOf(slideDurations[idx]))
+                val capture = threadEngine.get()
                 try {
                     // Create a standalone HTML for this specific slide
                     val singleSlideHtml = createSingleSlideHtml(deckHtml, idx)
@@ -827,8 +858,6 @@ open class CapsuleVideoTask : DefaultTask() {
                     logger.warn("  Slide {} capture failed: {}", seg.index, e.message)
                     synchronized(failedSlides) { failedSlides.add(seg.index) }
                     null
-                } finally {
-                    capture.close()
                 }
             })
         }
@@ -847,6 +876,10 @@ open class CapsuleVideoTask : DefaultTask() {
             }
         } finally {
             executor.shutdownNow()
+            engines.forEach { engine ->
+                runCatching { engine.close() }
+                    .onFailure { logger.info("Capture engine close failed: {}", it.message) }
+            }
         }
 
         if (failedSlides.isNotEmpty()) {

@@ -61,9 +61,18 @@ object ScreenshotPlanner {
     /**
      * Builds the FFmpeg command line (argv) to convert a single PNG into a
      * WebM of the exact slide duration (1 static frame, libvpx).
+     *
+     * The source is one still image, so the output only needs a keyframe and a
+     * duration: `-r 1` keeps the encoder to one frame per second instead of the
+     * 25 it would otherwise emit, which is where most of the encoding time went.
      */
-    fun ffmpegPngToWebmArgs(entry: ScreenshotSlideEntry, viewportWidth: Int, viewportHeight: Int): List<String> = listOf(
-        "ffmpeg", "-y",
+    fun ffmpegPngToWebmArgs(
+        entry: ScreenshotSlideEntry,
+        viewportWidth: Int,
+        viewportHeight: Int,
+        ffmpegPath: String = "ffmpeg",
+    ): List<String> = listOf(
+        ffmpegPath, "-y",
         "-loop", "1",
         "-framerate", "1",
         "-i", entry.pngFile.absolutePath,
@@ -73,6 +82,9 @@ object ScreenshotPlanner {
         "-vf", "scale=$viewportWidth:$viewportHeight",
         "-pix_fmt", "yuv420p",
         "-auto-alt-ref", "0",
+        "-r", "1",
+        "-cpu-used", "8",
+        "-deadline", "realtime",
         entry.webmFile.absolutePath
     )
 
@@ -80,8 +92,8 @@ object ScreenshotPlanner {
      * Builds the FFmpeg concat demuxer command line (argv) to merge
      * per-slide WebMs into the final `capsule.webm`.
      */
-    fun ffmpegConcatArgs(plan: ScreenshotCapturePlan): List<String> = listOf(
-        "ffmpeg", "-y",
+    fun ffmpegConcatArgs(plan: ScreenshotCapturePlan, ffmpegPath: String = "ffmpeg"): List<String> = listOf(
+        ffmpegPath, "-y",
         "-f", "concat",
         "-safe", "0",
         "-i", plan.concatListFile.absolutePath,
