@@ -9,10 +9,10 @@ buildscript {
 }
 
 plugins {
-    id("education.cccp.build.gradle-plugin") version "0.0.2"
-    id("education.cccp.build.publishing") version "0.0.2"
-    id("education.cccp.build.functional-test") version "0.0.2"
-    id("education.cccp.build.cucumber") version "0.0.2"
+    id("education.cccp.build.gradle-plugin") version "0.0.3"
+    id("education.cccp.build.publishing") version "0.0.3"
+    id("education.cccp.build.functional-test") version "0.0.3"
+    id("education.cccp.build.cucumber") version "0.0.3"
     alias(libs.plugins.kover)
     alias(libs.plugins.codebase)
 }
@@ -235,6 +235,17 @@ afterEvaluate {
     configurations.getByName("functionalTestImplementation").extendsFrom(
         configurations.getByName("testImplementation")
     )
+}
+
+// Groovy 3 leaks onto the unit-test runtime classpath through
+// slider → asciidoctor-gradle-jvm-slides → jrubygradle-resolver
+// (org.codehaus.groovy:groovy:3.0.17). Groovy 3 cannot initialize on JDK 24+
+// ("Could not initialize class org.codehaus.groovy.runtime.InvokerHelper") and it
+// shadows the Groovy 4 that Gradle puts on the test worker classpath, so every
+// ProjectBuilder-based test blows up. Gradle ships the Groovy that ProjectBuilder
+// needs. Scoped to `test`: functionalTest applies slider in a real nested build.
+configurations.named("testRuntimeClasspath") {
+    exclude(group = "org.codehaus.groovy")
 }
 
 gradlePlugin {

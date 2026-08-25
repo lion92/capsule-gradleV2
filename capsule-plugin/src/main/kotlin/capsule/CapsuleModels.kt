@@ -141,10 +141,26 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
     val captureStrategy: Property<CaptureStrategy> = objects.property(CaptureStrategy::class.java)
         .convention(CaptureStrategy.PLAYWRIGHT)
 
-    /** Groovy DSL helper: accepts a case-insensitive string ("playwright" / "screenshot"). */
+    /** Groovy DSL helper: accepts a case-insensitive string ("playwright" / "screenshot" / "remotion"). */
     fun captureStrategy(value: String) {
         captureStrategy.set(CaptureStrategy.fromString(value))
     }
+
+    /** CAP-ANIM — where the bundled Remotion composition is materialised, under the build dir. */
+    val remotionProjectDir: Property<String> = objects.property(String::class.java)
+        .convention("capsule/remotion")
+
+    /** CAP-ANIM — the `node` binary driving the Remotion render. */
+    val remotionNodeExecutablePath: Property<String> = objects.property(String::class.java)
+        .convention("node")
+
+    /** CAP-ANIM — how many frames Remotion renders in parallel (its multi-core knob). */
+    val remotionConcurrency: Property<Int> = objects.property(Int::class.java)
+        .convention(4)
+
+    /** CAP-ANIM — frame rate of the animated render. */
+    val remotionFps: Property<Int> = objects.property(Int::class.java)
+        .convention(30)
 
     /** CAP-MP4 — output format: WEBM (default), MP4 (H.264 transcode), or BOTH. Defaults to WEBM. */
     val outputFormat: Property<OutputFormat> = objects.property(OutputFormat::class.java)
@@ -241,7 +257,11 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
         audioPostLoudnessTarget = -16.0,
         audioPostDuckingEnabled = false,
         transcriptEnabled = false,
-        transcriptStrategy = TranscriptStrategy.TEMPLATE
+        transcriptStrategy = TranscriptStrategy.TEMPLATE,
+        remotionProjectDir = "capsule/remotion",
+        remotionNodeExecutablePath = "node",
+        remotionConcurrency = 4,
+        remotionFps = 30
     )
 }
 
@@ -290,5 +310,9 @@ data class CapsuleConventions(
     val audioPostLoudnessTarget: Double,
     val audioPostDuckingEnabled: Boolean,
     val transcriptEnabled: Boolean,
-    val transcriptStrategy: TranscriptStrategy
+    val transcriptStrategy: TranscriptStrategy,
+    val remotionProjectDir: String,
+    val remotionNodeExecutablePath: String,
+    val remotionConcurrency: Int,
+    val remotionFps: Int
 )

@@ -11,7 +11,7 @@ import java.util.ResourceBundle
 /**
  * Internationalization (i18n) message resolver for the Capsule plugin.
  *
- * Loads messages from `i18n/Messages_{code}.properties` resource bundles
+ * Loads messages from `capsule/i18n/Messages_{code}.properties` resource bundles
  * using UTF-8 encoding. Supports 10 languages: en, zh, hi, es, fr, ar, bn,
  * pt, ru, ur.
  *
@@ -26,7 +26,11 @@ import java.util.ResourceBundle
  */
 object CapsuleMessages {
 
-    private val baseName = "i18n/Messages"
+    // Namespaced under `capsule/`: slider (and the other cccp plugins) ship their own
+    // bundle at the bare `i18n/Messages` path. Two plugins on the same classpath would
+    // shadow each other's bundle — whichever jar comes first wins — and the loser blows
+    // up with MissingResourceException on its own keys.
+    private val baseName = "capsule/i18n/Messages"
 
     private val utf8Control = object : ResourceBundle.Control() {
         override fun newBundle(

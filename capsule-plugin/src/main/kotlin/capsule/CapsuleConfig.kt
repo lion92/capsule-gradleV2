@@ -22,7 +22,8 @@ data class CapsuleConfig(
     val context: ContextConfig = ContextConfig(),
     val validation: ValidationConfig = ValidationConfig(),
     val audioPost: AudioPostConfig = AudioPostConfig(),
-    val transcript: TranscriptConfig = TranscriptConfig()
+    val transcript: TranscriptConfig = TranscriptConfig(),
+    val remotion: RemotionConfig = RemotionConfig()
 )
 
 data class InputConfig(
@@ -76,10 +77,16 @@ data class DistribConfig(
  *   slide then uses FFmpeg to produce a WebM of the exact audio duration per
  *   slide, followed by a concat. Orders of magnitude faster and more reliable
  *   than Playwright real-time recording.
+ * - [REMOTION] — Frame-by-frame rendering through Remotion. The deck sections
+ *   are handed to a React composition that animates them (entrances, drift,
+ *   cross-fades) instead of holding a still image for the whole slide. Costs
+ *   more CPU than [SCREENSHOT] but is the only strategy that produces motion,
+ *   and it parallelises across cores natively.
  */
 enum class CaptureStrategy {
     PLAYWRIGHT,
-    SCREENSHOT;
+    SCREENSHOT,
+    REMOTION;
 
     companion object {
         /**
@@ -230,3 +237,42 @@ data class ValidationConfig(
     val durationEnabled: Boolean = false,
     val toleranceSecs: Double = 2.0
 )
+
+/**
+ * Configuration section for the Remotion capture strategy (CAP-ANIM).
+ *
+ * Remotion renders the deck frame by frame from a React composition, which is
+ * what makes animation possible: entrance transitions, slow drift and
+ * cross-fades between slides, instead of one frozen screenshot per slide.
+ *
+ * The plugin ships the composition itself — consumers do not author React. It
+ * is materialised into [projectDir] on first use, and the deck sections are
+ * passed to it as props, so a deck keeps its own CSS and identity.
+ *
+ * Defaults keep the strategy inert: it only runs when
+ * `capture.strategy=remotion` is selected.
+ *
+ * @param projectDir      where the bundled composition is materialised,
+ *        relative to the build directory (default `capsule/remotion`).
+ * @param nodeExecutablePath the `node` binary driving the render (default `node`).
+ * @param concurrency     how many frames are rendered in parallel. Remotion runs
+ *        one browser tab per unit, so this is the real multi-core knob
+ *        (default 4).
+ * @param fps             frame rate of the produced video (default 30).
+ */
+data class RemotionConfig(
+    val projectDir: String = "capsule/remotion",
+    val nodeExecutablePath: String = "node",
+    val concurrency: Int = 4,
+    val fps: Int = 30,
+) {
+    /** Validates the section. Returns the error messages, empty when valid. */
+    fun validate(): List<String> {
+        val errors = mutableListOf<String>()
+        if (projectDir.isBlank()) errors.add("projectDir must not be blank")
+        if (nodeExecutablePath.isBlank()) errors.add("nodeExecutablePath must not be blank")
+        if (concurrency < 1) errors.add("concurrency must be >= 1, got $concurrency")
+        if (fps !in 1..120) errors.add("fps must be between 1 and 120, got $fps")
+        return errors
+    }
+}

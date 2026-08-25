@@ -9,13 +9,42 @@ import org.gradle.api.logging.Logging
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
 
 interface PlaywrightCapture {
     fun capture(deckHtmlPath: String, outputDir: File, viewportWidth: Int, viewportHeight: Int, slideDurations: List<Double>)
     fun isAvailable(): Boolean
     fun name(): String
     fun close()
+
+    /**
+     * Container the engine writes, without the dot.
+     *
+     * The browser-driven engines produce WebM; Remotion produces MP4, because an
+     * H.264 stream cannot go into a WebM container and H.264 encodes far faster
+     * than VP8 (measured: 13.1 against 9.1 frames per second on the same deck).
+     * The downstream steps derive their file names and audio codec from this
+     * rather than assuming WebM.
+     */
+    fun outputExtension(): String = "webm"
 }
+
+/**
+ * Chromium launch options shared by every capture engine.
+ *
+ * `--no-sandbox` is not optional here: Gradle builds routinely run as root in
+ * Docker images and CI runners, and a root Chromium cannot initialise its
+ * sandbox — it hangs on the DevTools handshake instead of failing, which
+ * surfaces much later as a capture timeout. `--disable-dev-shm-usage` covers
+ * containers whose /dev/shm is too small for Chromium's default shared memory,
+ * and `--disable-gpu` avoids waiting on a GPU stack that headless rendering
+ * does not need.
+ */
+internal fun headlessChromiumOptions(): BrowserType.LaunchOptions =
+    BrowserType.LaunchOptions()
+        .setHeadless(true)
+        .setArgs(listOf("--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"))
 
 class PlaywrightCaptureImpl(
     private val timeout: Double = 120_000.0,
@@ -31,14 +60,21 @@ class PlaywrightCaptureImpl(
     private var context: BrowserContext? = null
     private var page: Page? = null
 
-    override fun isAvailable(): Boolean = try {
-        Playwright.create().use { pw ->
-            pw.chromium().launch(BrowserType.LaunchOptions().setHeadless(true)).use { it.close() }
+    // Probing costs a full browser launch: do it once per instance, not once per
+    // slide. Parallel capture used to re-resolve an engine for every slide, i.e.
+    // two launches per slide instead of one per worker thread.
+    private var availabilityProbe: Boolean? = null
+
+    override fun isAvailable(): Boolean = availabilityProbe ?: (
+        try {
+            Playwright.create().use { pw ->
+                pw.chromium().launch(headlessChromiumOptions()).use { it.close() }
+            }
+            true
+        } catch (e: Exception) {
+            false
         }
-        true
-    } catch (e: Exception) {
-        false
-    }
+        ).also { availabilityProbe = it }
 
     override fun name(): String = "playwright-java"
 
@@ -51,9 +87,7 @@ class PlaywrightCaptureImpl(
     ) {
         val slideCount = slideDurations.size
         playwright = Playwright.create()
-        browser = playwright!!.chromium().launch(
-            BrowserType.LaunchOptions().setHeadless(true)
-        )
+        browser = playwright!!.chromium().launch(headlessChromiumOptions())
         context = browser!!.newContext(
             Browser.NewContextOptions()
                 .setViewportSize(viewportWidth, viewportHeight)
@@ -139,20 +173,42 @@ class CapturingException(message: String) : RuntimeException(message)
  * concatenates all per-slide WebMs via the FFmpeg concat demuxer.
  */
 class ScreenshotCaptureImpl(
-    private val timeout: Double = 120_000.0
+    private val timeout: Double = 120_000.0,
+    private val ffmpegPath: String = "ffmpeg",
+    private val encodeParallelism: Int = 4,
 ) : PlaywrightCapture {
 
     private val logger = Logging.getLogger(ScreenshotCaptureImpl::class.java)
 
     private var playwright: Playwright? = null
     private var browser: Browser? = null
+    private var availabilityProbe: Boolean? = null
 
-    override fun isAvailable(): Boolean = try {
-        Playwright.create().use { pw ->
-            pw.chromium().launch(BrowserType.LaunchOptions().setHeadless(true)).use { it.close() }
+    /**
+     * Launches the browser on first use and keeps it for the lifetime of the
+     * instance. Each `capture()` call used to spin up its own Playwright driver
+     * and Chromium, and overwrite the previous ones without closing them — with
+     * parallel capture that meant one launch per slide, plus one more for the
+     * availability probe.
+     */
+    private fun ensureBrowser(): Browser {
+        val current = browser
+        if (current != null && current.isConnected) return current
+        val pw = playwright ?: Playwright.create().also { playwright = it }
+        return pw.chromium()
+            .launch(headlessChromiumOptions())
+            .also { browser = it }
+    }
+
+    override fun isAvailable(): Boolean = availabilityProbe ?: (
+        try {
+            ensureBrowser()
+            true
+        } catch (e: Exception) {
+            logger.info("Screenshot capture unavailable: {}", e.message)
+            false
         }
-        true
-    } catch (_: Exception) { false }
+        ).also { availabilityProbe = it }
 
     override fun name(): String = "screenshot+ffmpeg"
 
@@ -167,49 +223,110 @@ class ScreenshotCaptureImpl(
         val plan = ScreenshotPlanner.plan(outputDir, slideDurations)
         outputDir.mkdirs()
 
-        val absolutePath = File(deckHtmlPath).absolutePath
+        shootSlides(plan, File(deckHtmlPath).absolutePath, viewportWidth, viewportHeight)
+        encodeSlides(plan, viewportWidth, viewportHeight)
+        concatSlides(plan)
 
-        playwright = Playwright.create()
-        browser = playwright!!.chromium().launch(BrowserType.LaunchOptions().setHeadless(true))
+        logger.lifecycle("  ScreenshotCapture: {} slides → {}", plan.size, plan.finalWebm.name)
+    }
 
-        val page = browser!!.newPage(
+    /** Navigates the deck once and takes one PNG per slide. Inherently sequential. */
+    private fun shootSlides(
+        plan: ScreenshotCapturePlan,
+        absoluteDeckPath: String,
+        viewportWidth: Int,
+        viewportHeight: Int,
+    ) {
+        val page = ensureBrowser().newPage(
             Browser.NewPageOptions().setViewportSize(viewportWidth, viewportHeight)
         )
-        page.setDefaultNavigationTimeout(timeout)
-        page.setDefaultTimeout(timeout)
-        page.navigate("file://$absolutePath")
-        page.waitForSelector(".reveal, section, body",
-            Page.WaitForSelectorOptions().setTimeout(timeout))
-        page.waitForTimeout(800.0)
+        try {
+            page.setDefaultNavigationTimeout(timeout)
+            page.setDefaultTimeout(timeout)
+            page.navigate("file://$absoluteDeckPath")
+            page.waitForSelector(
+                ".reveal, section, body",
+                Page.WaitForSelectorOptions().setTimeout(timeout)
+            )
+            page.waitForTimeout(800.0)
 
-        for (entry in plan.slides) {
-            page.screenshot(Page.ScreenshotOptions().setPath(entry.pngFile.toPath()))
-            if (entry.index < plan.slides.lastIndex) {
-                page.evaluate("typeof Reveal !== 'undefined' && Reveal.next()")
-                page.waitForTimeout(300.0)
+            for (entry in plan.slides) {
+                page.screenshot(Page.ScreenshotOptions().setPath(entry.pngFile.toPath()))
+                if (entry.index < plan.slides.lastIndex) {
+                    page.evaluate("typeof Reveal !== 'undefined' && Reveal.next()")
+                    page.waitForTimeout(300.0)
+                }
             }
+        } finally {
+            page.close()
         }
-        page.close()
+    }
 
-        for (entry in plan.slides) {
-            val argv = ScreenshotPlanner.ffmpegPngToWebmArgs(entry, viewportWidth, viewportHeight)
-            val proc = ProcessBuilder(argv).redirectErrorStream(true).start()
-            val exitCode = proc.waitFor()
-            if (exitCode != 0) {
-                val err = proc.inputStream.bufferedReader().readText()
-                throw CapturingException("FFmpeg PNG→WebM failed (slide ${entry.index}): $err")
+    /**
+     * PNG → WebM, one FFmpeg process per slide. Pure CPU work with no shared
+     * state, so it runs on a bounded pool: this is the step that dominates the
+     * capture, and unlike parallel browsers it cannot destabilise the driver.
+     */
+    private fun encodeSlides(plan: ScreenshotCapturePlan, viewportWidth: Int, viewportHeight: Int) {
+        val parallelism = encodeParallelism.coerceIn(1, plan.slides.size)
+        if (parallelism == 1) {
+            plan.slides.forEach { encodeSlide(it, viewportWidth, viewportHeight) }
+            return
+        }
+        val pool = Executors.newFixedThreadPool(parallelism)
+        try {
+            val futures = plan.slides.map { entry ->
+                pool.submit { encodeSlide(entry, viewportWidth, viewportHeight) }
             }
+            futures.forEach { future ->
+                try {
+                    future.get()
+                } catch (e: ExecutionException) {
+                    throw e.cause as? CapturingException
+                        ?: CapturingException("FFmpeg PNG to WebM failed: ${e.cause?.message}")
+                }
+            }
+        } finally {
+            pool.shutdownNow()
         }
+    }
 
+    private fun encodeSlide(entry: ScreenshotSlideEntry, viewportWidth: Int, viewportHeight: Int) {
+        runFfmpeg(
+            ScreenshotPlanner.ffmpegPngToWebmArgs(entry, viewportWidth, viewportHeight, ffmpegPath),
+            File(entry.webmFile.parentFile, "${entry.webmFile.nameWithoutExtension}-ffmpeg.log"),
+        ) { log -> "FFmpeg PNG to WebM failed (slide ${entry.index}): $log" }
+    }
+
+    private fun concatSlides(plan: ScreenshotCapturePlan) {
         plan.concatListFile.writeText(ScreenshotPlanner.renderConcatList(plan))
-        val concatArgv = ScreenshotPlanner.ffmpegConcatArgs(plan)
-        val concatProc = ProcessBuilder(concatArgv).redirectErrorStream(true).start()
-        val concatExit = concatProc.waitFor()
-        if (concatExit != 0) {
-            val err = concatProc.inputStream.bufferedReader().readText()
-            throw CapturingException("FFmpeg concat failed: $err")
+        runFfmpeg(
+            ScreenshotPlanner.ffmpegConcatArgs(plan, ffmpegPath),
+            File(plan.finalWebm.parentFile, "concat-ffmpeg.log"),
+        ) { log -> "FFmpeg concat failed: $log" }
+    }
+
+    /**
+     * Runs FFmpeg with its output redirected to [logFile] rather than to a pipe.
+     * FFmpeg is chatty and a pipe nobody drains fills up at 64 KB, which
+     * deadlocks the process instead of failing it.
+     */
+    private fun runFfmpeg(argv: List<String>, logFile: File, message: (String) -> String) {
+        logFile.parentFile?.mkdirs()
+        val exitCode = ProcessBuilder(argv)
+            .redirectErrorStream(true)
+            .redirectOutput(logFile)
+            .start()
+            .waitFor()
+        if (exitCode != 0) {
+            val tail = logFile.takeIf { it.exists() }
+                ?.readLines()
+                ?.takeLast(12)
+                ?.joinToString(System.lineSeparator())
+                .orEmpty()
+            throw CapturingException(message(tail))
         }
-        logger.lifecycle("  ScreenshotCapture: {} slides → {}", plan.size, plan.finalWebm.name)
+        logFile.delete()
     }
 
     override fun close() {
@@ -217,5 +334,6 @@ class ScreenshotCaptureImpl(
         playwright?.close()
         browser = null
         playwright = null
+        availabilityProbe = null
     }
 }

@@ -6,10 +6,10 @@
 [![Maven Central](https://img.shields.io/static/v1?label=Maven%20Central&message=0.0.1-SNAPSHOT&color=orange)](https://central.sonatype.com/artifact/education.cccp/capsule-plugin)
 [![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/education.cccp.capsule.svg?label=Plugin%20Portal)](https://plugins.gradle.org/plugin/education.cccp.capsule)
 [![CI](https://img.shields.io/github/actions/workflow/status/cheroliv/capsule-gradle/test.yml?branch=main&label=CI)](https://github.com/cheroliv/capsule-gradle/actions/workflows/test.yml)
-[![License](https://img.shields.io/github/license/cheroliv/capsule-gradle?label=License)](../LICENSE)
+[![License](https://img.shields.io/github/license/cheroliv/capsule-gradle?label=License)](LICENSE)
 
 - **Version**: `0.0.1-SNAPSHOT` (non publié) · **Group**: `education.cccp` · **Plugin ID**: `education.cccp.capsule`
-- **Build**: `./gradlew build` · **Tests**: `./gradlew check` (460 unit + 25 functional PASS, cucumber via `-PrunCucumber`)
+- **Build**: `./gradlew build` · **Tests**: `./gradlew check` (917 unit + 67 functional PASS, cucumber via `-PrunCucumber`)
 - **Coverage**: Kover XML + HTML reports wired into `check`
 
 🌐 Languages: **EN** | [中文](README.consommateurs/README.zh.md) | [हिन्दी](README.consommateurs/README.hi.md) | [Español](README.consommateurs/README.es.md) | [Français](README.consommateurs/README.fr.md) | [العربية](README.consommateurs/README.ar.md) | [বাংলা](README.consommateurs/README.bn.md) | [Português](README.consommateurs/README.pt.md) | [Русский](README.consommateurs/README.ru.md) | [اردو](README.consommateurs/README.ur.md)
@@ -73,13 +73,13 @@ plugins {
     alias(libs.plugins.capsule)
 }
 
-tasks.named("capsulevideo") {
+tasks.named("generateCapsuleVideo") {
     dependsOn("asciidoctorRevealJs", "asciidocCapsule")
 }
 ```
 
 ```bash
-./gradlew capsulevideo    # slider deck + script → capsule video
+./gradlew generateCapsuleVideo    # slider deck + script → capsule video
 ```
 
 ### Multi-language video pipeline (CAP-29, domain `capsule.multilang`)
@@ -132,6 +132,13 @@ already exists and probes valid is never re-rendered.
 | `transformCapsuleContext`  | transform | Parses `capsule-context.json` and returns a list of decks |
 | `collectCapsuleRetrieve`   | collect   | Retrieves capsule decks from context JSON (N3 engine contract) |
 | `scaffoldCapsuleContext`   | generate  | Scaffolds a default `capsule-context.yml` config file with comments |
+| `generateCapsuleContentAndVideos` | capsule | Composite: `generateCapsuleContent` → `translateAndGenerateCapsuleVideos` |
+| `collectCapsuleAugmentedContext` | collect | Collects the augmented context (governance + RAG + Graphify + Docs + scenario + glossary) |
+| `generateCapsuleContent`   | generate  | koog LLM pipeline: propose-context → validate → speaker notes + TTS script |
+| `generateCapsuleTranscript`| generate  | Produces an AsciiDoc transcript article from the speaker notes (TEMPLATE or LLM) |
+| `distributeCapsuleVideo`   | distribute| Copies the final videos to a versioned destination directory (CAP-ARCH-7) |
+| `validateCapsuleVideoDuration` | verification | Probes the final video duration against the sum of TTS audio durations (CAP-CR3-1) |
+| `capsuleAiSmokeTest`       | generate  | Smoke-tests the codebase LLM bridge with a minimal prompt |
 
 ## Extension DSL
 
@@ -150,7 +157,7 @@ capsule {
     ttsFallbackEnabled.set(true)
     espeakVoice.set("fr")
     espeakSpeed.set(150)
-    ttsLanguage.set("fr")                     // 10 languages (fr, en, es, de, zh, hi, ar, bn, pt, ru, ur)
+    ttsLanguage.set("fr")                     // 10 languages: fr, en, es, zh, hi, ar, bn, pt, ru, ur
 
     // Capture
     viewportWidth.set(1408)
@@ -195,8 +202,8 @@ Configuration is resolved from 4 sources (priority: CLI > YAML > gradle.properti
 
 ## Prerequisites
 
-- **Java** 24+ (Kotlin 2.3.20 toolchain)
-- **Gradle** 9.5+
+- **Java** 25+ (Kotlin 2.4.10 toolchain)
+- **Gradle** 9.6.1+
 - **Piper** (TTS, local offline) — default engine
 - **espeak** (TTS fallback)
 - **Chromium** (auto-downloaded by Playwright on first run)
@@ -229,7 +236,7 @@ See [CAPSULE_ARCHITECTURE.adoc](../capsule-plugin/doc/CAPSULE_ARCHITECTURE.adoc)
 
 ## License
 
-Apache License 2.0 — see [LICENSE](../LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).
 
 ---
 

@@ -49,9 +49,20 @@ class CaptureStrategyTest {
     }
 
     @Test
-    fun `enum has exactly two values`() {
-        assertEquals(2, CaptureStrategy.entries.size)
+    fun `enum lists the three capture strategies, Playwright first`() {
+        // PLAYWRIGHT stays first: fromString falls back to entries order for
+        // unknown values, and that fallback is the documented backward-compatible
+        // behaviour for configs with no capture.strategy.
+        assertEquals(3, CaptureStrategy.entries.size)
         assertEquals(CaptureStrategy.PLAYWRIGHT, CaptureStrategy.entries[0])
         assertEquals(CaptureStrategy.SCREENSHOT, CaptureStrategy.entries[1])
+        assertEquals(CaptureStrategy.REMOTION, CaptureStrategy.entries[2])
+    }
+
+    @Test
+    fun `remotion parses case-insensitively like the other strategies`() {
+        assertEquals(CaptureStrategy.REMOTION, CaptureStrategy.fromString("remotion"))
+        assertEquals(CaptureStrategy.REMOTION, CaptureStrategy.fromString("REMOTION"))
+        assertEquals(CaptureStrategy.REMOTION, CaptureStrategy.fromString("Remotion"))
     }
 }

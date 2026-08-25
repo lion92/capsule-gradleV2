@@ -83,7 +83,7 @@ object AudioPostCommand {
         val hasBgm = config.bgmEnabled && bgmFile != null
         if (hasBgm) {
             argv.add("-i")
-            argv.add(bgmFile!!.absolutePath)
+            argv.add(bgmFile.absolutePath)
             argv.add("-filter_complex")
             argv.add(buildFilterGraph(config, hasBgmInput = true))
             argv.add("-map")

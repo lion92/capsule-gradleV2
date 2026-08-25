@@ -111,6 +111,7 @@ open class CapsuleBuildTask : DefaultTask() {
         val cores = Runtime.getRuntime().availableProcessors()
         val executor = Executors.newFixedThreadPool(cores)
         val synthesized = AtomicInteger(0)
+        val skipped = AtomicInteger(0)
         val failed = AtomicInteger(0)
         val futures = mutableListOf<Future<*>>()
 
@@ -125,6 +126,17 @@ open class CapsuleBuildTask : DefaultTask() {
 
                 futures.add(executor.submit {
                     try {
+                        // Une narration déjà présente est respectée, comme le fait
+                        // CapsuleVideoTask : elle vient d'un moteur externe (voix
+                        // clonée, prise retenue à la main) que ce moteur local ne
+                        // sait pas reproduire. Sans ce garde-fou, la relance du
+                        // rendu remplace en silence la voix par le repli piper, et
+                        // rien dans le journal ne dit qu'une piste a été perdue.
+                        if (ttsFile.exists() && ttsFile.length() > 0) {
+                            skipped.incrementAndGet()
+                            logger.lifecycle("  TTS ↷ {} (déjà présent, conservé)", ttsFile.name)
+                            return@submit
+                        }
                         engine.synthesize(seg.speakerNote, ttsFile)
                         synthesized.incrementAndGet()
                         logger.lifecycle("  TTS → {} ({} chars)", ttsFile.name, seg.speakerNote.length)
@@ -144,8 +156,8 @@ open class CapsuleBuildTask : DefaultTask() {
         }
 
         logger.lifecycle(
-            "TTS generation: {} synthesized, {} failed, {} engine, {} cores",
-            synthesized.get(), failed.get(), engine.name(), cores
+            "TTS generation: {} synthesized, {} kept, {} failed, {} engine, {} cores",
+            synthesized.get(), skipped.get(), failed.get(), engine.name(), cores
         )
     }
 }

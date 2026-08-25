@@ -37,7 +37,7 @@ open class CapsuleVideoTask : DefaultTask() {
         /**
          * Default per-slide capture timeout (5 minutes). A capture that exceeds
          * this bound aborts the parallel run and shuts the executor down.
-         * Configurable via the [CapsuleExtension.parallelCaptureTimeout] DSL (CR-2.3).
+         * Configurable via the [CapsuleExtension.captureTimeoutMinutes] DSL (CR-2.3).
          */
         const val DEFAULT_CAPTURE_TIMEOUT_MILLIS: Long = 5 * 60 * 1000L
 
@@ -105,6 +105,15 @@ open class CapsuleVideoTask : DefaultTask() {
          * @param slideIndex 0-based index of the section within `.slides` container
          * @return Standalone HTML with only the requested slide, preserving head, styles, and scripts
          */
+        /**
+         * Forces the one extracted slide to be visible whatever the deck's own
+         * stylesheet does with `.slides section` (reveal.css hides every slide
+         * but the current one, and positions them absolutely).
+         */
+        internal const val SINGLE_SLIDE_VISIBILITY_CSS: String =
+            ".reveal .slides section{display:block!important;visibility:visible!important;" +
+                "opacity:1!important;transform:none!important;position:relative!important;top:0!important;left:0!important}"
+
         @JvmStatic
         fun createSingleSlideHtml(deckHtml: String, slideIndex: Int): String {
             val headMatch = Regex("""(?s)(<head>.*?</head>)""").find(deckHtml)
@@ -136,8 +145,16 @@ open class CapsuleVideoTask : DefaultTask() {
                 appendLine("    $targetSection")
                 appendLine("  </div>")
                 appendLine("</div>")
-                appendLine("""<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>""")
-                appendLine("<script>Reveal.initialize();</script>")
+                // No reveal.js is pulled in here. The deck already carries whatever
+                // presentation runtime it was built with, in the <head> preserved
+                // above; fetching a second, different copy from a CDN made it
+                // re-layout the page — titles and captions ended up off-screen —
+                // and made parallel capture depend on network access. A single
+                // extracted slide needs no runtime at all, only to be visible, so
+                // the deck's own rules are overridden with one inline stylesheet.
+                appendLine("<style>")
+                appendLine(SINGLE_SLIDE_VISIBILITY_CSS)
+                appendLine("</style>")
                 appendLine("</body>")
                 appendLine("</html>")
             }.trimIndent()
@@ -190,10 +207,27 @@ open class CapsuleVideoTask : DefaultTask() {
                 )
             },
             screenshotFactory = {
-                ScreenshotCaptureImpl(timeout = capsuleExtension.playwrightTimeout.get())
+                ScreenshotCaptureImpl(
+                    timeout = capsuleExtension.playwrightTimeout.get(),
+                    ffmpegPath = capsuleExtension.ffmpegExecutablePath.get(),
+                    encodeParallelism = capsuleExtension.parallelCaptureThreads.get(),
+                )
             },
             noOpCapture = NoOpPlaywrightCapture(),
-            enginePath = capsuleExtension.chromiumExecutablePath.get()
+            enginePath = capsuleExtension.chromiumExecutablePath.get(),
+            remotionFactory = {
+                RemotionCaptureImpl(
+                    projectDir = project.layout.buildDirectory
+                        .dir(capsuleExtension.remotionProjectDir.get()).get().asFile,
+                    nodeExecutablePath = capsuleExtension.remotionNodeExecutablePath.get(),
+                    concurrency = capsuleExtension.remotionConcurrency.get(),
+                    fps = capsuleExtension.remotionFps.get(),
+                    // Manim writes under <mediaDir>/videos/<module>/<quality>/ ;
+                    // the quality directory depends on the resolution asked for,
+                    // so every leaf is offered rather than one guessed path.
+                    manimSources = manimVideoDirs(),
+                )
+            },
         )
         if (resolved.isAvailable()) {
             val totalSecs = slideDurations.sum()
@@ -298,6 +332,24 @@ open class CapsuleVideoTask : DefaultTask() {
         val renderer = CapsuleManager.resolveManimParallelRenderer(parallelism)
         logger.lifecycle("Manim parallel renderer: {} (parallelism={})", renderer.name(), parallelism)
         return renderer
+    }
+
+    /**
+     * Every directory that may hold a Manim render, deepest first.
+     *
+     * Manim nests its output under a quality folder whose name follows the
+     * requested resolution (`792p30`, `1080p60`...), so the tree is walked
+     * instead of assuming one.
+     */
+    private fun manimVideoDirs(): List<File> {
+        val roots = listOf(
+            project.file(capsuleExtension.manimOutputDir.get()),
+            project.layout.buildDirectory.dir(capsuleExtension.manimOutputDir.get()).get().asFile,
+            project.file("build/manim"),
+        ).filter { it.isDirectory }
+        return roots.flatMap { root ->
+            root.walkTopDown().maxDepth(4).filter { it.isDirectory }.toList()
+        }.distinct()
     }
 
     internal fun computeSlideDurations(parsed: CapsuleScript, audioDir: File): List<Double> {
@@ -485,12 +537,18 @@ open class CapsuleVideoTask : DefaultTask() {
             deckCapture.close()
         }
 
-        val generatedVideo = videoOutputDir.listFiles { f -> f.name.endsWith(".webm") }
-            ?.firstOrNull()
+        // SCREENSHOT strategy leaves the per-slide `slide-N.<ext>` next to the
+        // concatenated `capsule.<ext>`, and listFiles() order is unspecified:
+        // always prefer the concatenated file, never a single slide.
+        val ext = deckCapture.outputExtension()
+        val produced = videoOutputDir.listFiles { f -> f.name.endsWith(".$ext") }?.toList().orEmpty()
+        val generatedVideo = produced.firstOrNull { it.name == "${RemotionPlanner.FINAL_VIDEO_BASENAME}.$ext" }
+            ?: produced.firstOrNull { !it.name.startsWith("slide-") }
+            ?: produced.firstOrNull()
         if (generatedVideo != null) {
-            val finalVideo = outDir.resolve("${parsed.deckName}.webm")
+            val finalVideo = outDir.resolve("${parsed.deckName}.$ext")
             generatedVideo.copyTo(finalVideo, overwrite = true)
-            mixAudioWithVideo(finalVideo, audioDir, parsed.segments, capsuleExtension.slideDurationSeconds.get())
+            mixAudioWithVideo(finalVideo, audioDir, parsed.segments)
             burnInSubtitlesIfEnabled(finalVideo, subtitleFile)
             applyAudioPostIfEnabled(finalVideo)
             val produced = convertFormatIfEnabled(finalVideo)
@@ -518,11 +576,13 @@ open class CapsuleVideoTask : DefaultTask() {
             audioDir = audioDir,
             captureTimeoutMillis = capsuleExtension.captureTimeoutMinutes.get().toLong() * 60_000L
         )
-        val concatVideo = videoOutputDir.resolve("${parsed.deckName}.webm")
-        if (concatVideo.exists()) {
-            val finalVideo = outDir.resolve("${parsed.deckName}.webm")
+        val concatVideo = listOf("webm", "mp4")
+            .map { videoOutputDir.resolve("${parsed.deckName}.$it") }
+            .firstOrNull { it.exists() }
+        if (concatVideo != null) {
+            val finalVideo = outDir.resolve("${parsed.deckName}.${concatVideo.extension}")
             concatVideo.copyTo(finalVideo, overwrite = true)
-            mixAudioWithVideo(finalVideo, audioDir, parsed.segments, capsuleExtension.slideDurationSeconds.get())
+            mixAudioWithVideo(finalVideo, audioDir, parsed.segments)
             burnInSubtitlesIfEnabled(finalVideo, subtitleFile)
             applyAudioPostIfEnabled(finalVideo)
             val produced = convertFormatIfEnabled(finalVideo)
@@ -653,9 +713,11 @@ open class CapsuleVideoTask : DefaultTask() {
         val src = HtmlEscape.escape(subtitleFile.name)
         val label = HtmlEscape.escape(format.name)
         val trackElement = """<track kind="captions" src="$src" srclang="$lang" label="$label captions" default>"""
+        // The autoplay audio script is already injected by injectAudio — re-adding it
+        // here would build a second set of Audio elements and play the narration twice.
         return deckHtml.replace(
             "</body>",
-            "$trackElement\n$AUDIO_INJECT_SCRIPT</body>"
+            "$trackElement\n</body>"
         )
     }
 
@@ -667,7 +729,7 @@ open class CapsuleVideoTask : DefaultTask() {
         }
 
         val service = resolveSubtitleBurnInService()
-        val tmpFile = File(videoFile.absolutePath + ".burnin.webm")
+        val tmpFile = File(videoFile.absolutePath + ".burnin.${videoFile.extension}")
         try {
             val burned = service.burnIn(videoFile, subtitleFile, tmpFile)
             if (burned.exists() && burned.length() > 0) {
@@ -723,7 +785,7 @@ open class CapsuleVideoTask : DefaultTask() {
             duckingEnabled = duckingEnabled
         )
 
-        val tmpFile = File(finalVideo.absolutePath + ".audiopost.webm")
+        val tmpFile = File(finalVideo.absolutePath + ".audiopost.${finalVideo.extension}")
         try {
             val success = processor.process(finalVideo, tmpFile, config)
             if (success && tmpFile.exists() && tmpFile.length() > 0) {
@@ -754,6 +816,11 @@ open class CapsuleVideoTask : DefaultTask() {
     internal fun convertFormatIfEnabled(finalVideo: File): File {
         val format = capsuleExtension.outputFormat.get()
         if (format == OutputFormat.WEBM) return finalVideo
+        // Remotion already renders MP4; re-encoding it into MP4 would cost a full
+        // transcode for nothing.
+        if (format == OutputFormat.MP4 && finalVideo.extension.equals("mp4", ignoreCase = true)) {
+            return finalVideo
+        }
         val ffmpegPath = capsuleExtension.ffmpegExecutablePath.get()
         val converter = CapsuleManager.resolveFormatConverter(ffmpegPath, strict = capsuleExtension.strictMode.get())
         if (converter !is NoOpVideoFormatConverter) {
@@ -788,13 +855,23 @@ open class CapsuleVideoTask : DefaultTask() {
         val failedSlides = mutableListOf<Int>()
         val slideDurations = computeSlideDurations(parsed, audioDir)
 
+        // One capture engine per worker thread, reused across that thread's slides.
+        // Resolving per slide launched a browser for the availability probe and a
+        // second one for the capture itself — two Chromium instances per slide,
+        // which is what saturated the driver and made this mode unusable.
+        val engines = java.util.concurrent.ConcurrentLinkedQueue<PlaywrightCapture>()
+        val threadEngine = ThreadLocal.withInitial {
+            (captureFactory?.invoke() ?: resolvePlaywrightCapture(slideDurations))
+                .also { engines.add(it) }
+        }
+
         // Read the deck HTML once for createSingleSlideHtml extraction
         val deckHtml = File(deckHtmlPath).readText()
 
         for ((idx, seg) in parsed.segments.withIndex()) {
             val slideDir = outputDir.resolve("slide-${String.format("%02d", seg.index)}")
             futures.add(executor.submit<File?> {
-                val capture = captureFactory?.invoke() ?: resolvePlaywrightCapture(listOf(slideDurations[idx]))
+                val capture = threadEngine.get()
                 try {
                     // Create a standalone HTML for this specific slide
                     val singleSlideHtml = createSingleSlideHtml(deckHtml, idx)
@@ -803,9 +880,18 @@ open class CapsuleVideoTask : DefaultTask() {
                     singleSlideFile.writeText(singleSlideHtml)
 
                     capture.capture(singleSlideFile.absolutePath, slideDir, viewportWidth, viewportHeight, listOf(slideDurations[idx]))
-                    val source = slideDir.resolve("slide.webm")
-                    if (source.exists()) {
-                        val target = outputDir.resolve("slide-${String.format("%02d", seg.index)}.webm")
+                    // No capture engine writes a file called `slide.webm`: Playwright
+                    // names its recording with a random id, ScreenshotCaptureImpl emits
+                    // `capsule.webm`. Take whatever WebM landed in the slide directory.
+                    val slideExt = capture.outputExtension()
+                    val produced = slideDir.listFiles { f -> f.name.endsWith(".$slideExt") }?.toList().orEmpty()
+                    val source = produced.firstOrNull {
+                        it.name == "${RemotionPlanner.FINAL_VIDEO_BASENAME}.$slideExt"
+                    }
+                        ?: produced.firstOrNull { !it.name.startsWith("slide-") }
+                        ?: produced.firstOrNull()
+                    if (source != null && source.exists()) {
+                        val target = outputDir.resolve("slide-${String.format("%02d", seg.index)}.$slideExt")
                         source.copyTo(target, overwrite = true)
                         target
                     } else null
@@ -814,8 +900,6 @@ open class CapsuleVideoTask : DefaultTask() {
                     logger.warn("  Slide {} capture failed: {}", seg.index, e.message)
                     synchronized(failedSlides) { failedSlides.add(seg.index) }
                     null
-                } finally {
-                    capture.close()
                 }
             })
         }
@@ -834,6 +918,10 @@ open class CapsuleVideoTask : DefaultTask() {
             }
         } finally {
             executor.shutdownNow()
+            engines.forEach { engine ->
+                runCatching { engine.close() }
+                    .onFailure { logger.info("Capture engine close failed: {}", it.message) }
+            }
         }
 
         if (failedSlides.isNotEmpty()) {
@@ -844,8 +932,8 @@ open class CapsuleVideoTask : DefaultTask() {
         }
 
         if (webmFiles.isNotEmpty()) {
-            val finalVideo = outputDir.resolve("${parsed.deckName}.webm")
-            concatWebmFiles(webmFiles, finalVideo)
+            val finalVideo = outputDir.resolve("${parsed.deckName}.${webmFiles.first().extension}")
+            concatWebmFiles(webmFiles, finalVideo, capsuleExtension.ffmpegExecutablePath.get())
         }
 
         return failedSlides.size
@@ -948,7 +1036,7 @@ open class CapsuleVideoTask : DefaultTask() {
         return outFile
     }
 
-    private fun mixAudioWithVideo(videoFile: File, audioDir: File, slides: List<SlideSegment>, slideDurationSeconds: Double) {
+    private fun mixAudioWithVideo(videoFile: File, audioDir: File, slides: List<SlideSegment>) {
         val mp3Files = slides.mapNotNull { seg ->
             val idx = String.format("%02d", seg.index)
             val f = audioDir.resolve("slide-$idx.mp3")
@@ -956,7 +1044,7 @@ open class CapsuleVideoTask : DefaultTask() {
         }
         if (mp3Files.isEmpty()) return
 
-        val cmd = mutableListOf("ffmpeg", "-y", "-i", videoFile.absolutePath)
+        val cmd = mutableListOf(capsuleExtension.ffmpegExecutablePath.get(), "-y", "-i", videoFile.absolutePath)
         val concatInputs = mutableListOf<String>()
 
         for ((i, mp3) in mp3Files.withIndex()) {
@@ -966,9 +1054,12 @@ open class CapsuleVideoTask : DefaultTask() {
         }
 
         val filterComplex = "${concatInputs.joinToString("")}concat=n=${mp3Files.size}:v=0:a=1[aout]"
-        cmd.addAll(listOf("-filter_complex", filterComplex, "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "libvorbis", "-shortest"))
+        // Vorbis has no place in an MP4 and AAC none in a WebM: the container the
+        // capture engine produced decides the audio codec.
+        val audioCodec = AudioCodecs.forContainer(videoFile.extension)
+        cmd.addAll(listOf("-filter_complex", filterComplex, "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", audioCodec, "-shortest"))
 
-        val tmpFile = File(videoFile.absolutePath + ".tmp.webm")
+        val tmpFile = File(videoFile.absolutePath + ".tmp.${videoFile.extension}")
         cmd.add(tmpFile.absolutePath)
 
         try {

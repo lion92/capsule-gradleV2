@@ -22,7 +22,7 @@ Implémenter les scénarios Cucumber BDD pour la génération de transcriptions 
 Tous les scénarios Cucumber passent avec succès :
 - `./gradlew cucumberTestTranscript` → BUILD SUCCESSFUL
 - 4 scénarios exécutés, 0 échecs
-- L'EPIC CAP-TRANSCRIPT est maintenant à 5/6 US terminées (US-5 terminée)
+- L'EPIC CAP-TRANSCRIPT est maintenant à 6/6 US terminées (US-0 → US-5), EPIC clos
 
 == Fichiers modifiés
 - `build.gradle.kts` : ajout de la tâche CucumberTestTranscript dans cucumberConventions
@@ -31,4 +31,4 @@ Tous les scénarios Cucumber passent avec succès :
 - `src/test/kotlin/capsule/scenarios/CapsuleTranscriptSteps.kt` : nouvelles définitions d'étapes
 
 == Prochaine session
-Session 120 — CAP-TRANSCRIPT US-6 TODO (selon l'INDEX.adoc)
+Session 120 — à cadrer : l'EPIC CAP-TRANSCRIPT ne compte que 6 US (US-0 → US-5), toutes terminées.
