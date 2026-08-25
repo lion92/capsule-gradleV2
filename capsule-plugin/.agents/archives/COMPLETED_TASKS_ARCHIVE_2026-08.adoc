@@ -1255,3 +1255,17 @@ préexistantes. Retrait — aucun test n'importait slider.
 
 Gate : `test` 917 tests 0 FAIL + `cucumberTestTranscript` 4/4 PASSED.
 CAP-TRANSCRIPT EPIC TERMINÉ 6/6 US. EPIC MEMPHIS-BOM-FIX TERMINÉ 5/5 US.
+
+== Session 123 — CAP-28 US-0 audit partiel (2026-08-25)
+
+Audit 3 fichiers low-coverage (PiperTtsEngine 31%, ManimEngineImpl 25%,
+ScreenshotCaptureImpl 26%). Gaps identifiés par fichier. Décisions
+préliminaires (pas de nouveau domaine, baby-step TDD strict, tests sans
+I/O uniquement, 3 US ~11 unit).
+
+Clôture anticipée par pilote — US-0 cadrage non finalisé (BACKLOG détaillé
+pas MàJ), US-1/2/3 non démarrés. Zéro code modifié — session gouvernance
+pure. Baseline 977 unit VERT préservée, 69 functional VERT, cucumber dédiés
+GREEN.
+
+Rapport : `.agents/sessions/123-cap-28-audit.adoc`.

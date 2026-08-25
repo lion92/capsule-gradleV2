@@ -1,0 +1,126 @@
+= Session 123 — CAP-28 Audit Coverage Gaps (Cadrage partiel)
+:session: 123
+:borough: Détroit
+:date: 2026-08-25
+:statut: PARTIEL — US-0 cadrage en cours, clôturé par demande pilote
+
+== Contexte Hérité
+
+Session 122 — **EPIC CAP-ANIM TERMINÉ 3/3 US** — cadrage rétroactif code
+Remotion livré PR #1 + 40 unit + 3 cucumber + 2 functional. Baseline 977 unit
+VERT, 69 functional VERT, cucumber dédiés GREEN. Domaine `capsule.remotion`
+(12ème) clos.
+
+== Mission Session 123
+
+Maintenance P2. PROMPT_REPRISE listait 5 EPICs restants :
+* CAP-28 — Coverage gaps (PiperTtsEngine 31%, ManimEngineImpl 25%,
+  ScreenshotCaptureImpl 26%)
+* CAP-CR3-4 — Convention Gradle `resolveScriptDir/resolveDeckDir`
+* CAP-CHAPITRE — Découpage chapitres vidéo
+* CAP-PODCAST — Export audio-only
+* CAP-PREVIEW — Aperçu rapide
+
+Pilote a demandé d'attaquer CAP-28 en priorité (plus simple, étend tests
+existants sans nouveau domaine).
+
+== Travail Effectué — US-0 Cadrage (partiel)
+
+=== Audit des 3 fichiers low-coverage
+
+. **PiperTtsEngine** (`TtsManager.kt:14-71`, 58 lignes) :
+  - Tests existants : 6 tests dans `CapsulePluginTest` (isAvailable false
+    path inexistant, name, language EN/DE resolve model, explicit model
+    backward compat, synthesize throws TtsException when not available).
+  - Gaps identifiés :
+    * `language()` non testé — retourne `language ?: MultiLanguageResolver
+      .resolveByPiperModel(resolvedModel)` (2 branches)
+    * `resolvedModel` resolution non testée explicitement — `language?.let
+      { MultiLanguageResolver.piperModel(it.code) } ?: model` (3 branches :
+      language null → model default, language non-null → piperModel,
+      piperModel unknown → null)
+    * `synthesize` happy path non couvert — requiert vrai piper binaire
+      (gated, skip)
+    * `synthesize` exit code != 0 non couvert — requiert piper qui échoue
+      (gated)
+    * `AudioConversionUtil.wavToMp3` appel non couvert (gated ffmpeg)
+  - Testable sans I/O : `language()` 2 branches, `resolvedModel` via
+    constructeur (introspection name/isAvailable), `name()` backward
+    compat.
+
+. **ManimEngineImpl** (`ManimEngine.kt:12-66`, 55 lignes) :
+  - Tests existants : 6 tests dans `ManimEngineTest` (isAvailable false,
+    render throws ManimException when not available, name returns manim,
+    config quality flag stored, default config matches defaults, noop
+    path unavailable).
+  - Gaps identifiés :
+    * `render` happy path non couvert — requiert vrai manim (gated)
+    * `render` exit code != 0 non couvert — manim qui échoue (gated)
+    * `render` output file not found (L59 `!mp4File.exists()` →
+      ManimException) non couvert — requiert manim qui réussit mais
+      output ailleurs (gated, ou mock filesystem)
+    * `probeDuration` délègue à `MediaProbeUtil.probeDuration` — non
+      testé directement (couvert indirectement par `MediaProbeUtilTest`)
+  - Testable sans I/O : `probeDuration` delegation (1 test avec ffprobe
+    absent → 0.0), `name()` invariant, `isAvailable` memoization (2
+    appels, 1 ProcessBuilder).
+
+. **ScreenshotCaptureImpl** (`PlaywrightManager.kt:175-355`, 181 lignes) :
+  - Tests existants : 3 tests dans `ScreenshotCaptureTest` (name correct,
+    isAvailable runs without error, close safe without init) +
+    `ScreenshotPlannerTest` 8 tests (plan, concatList, argv builders —
+    pur object couvert).
+  - Gaps identifiés :
+    * `isAvailable()` memoization via `availabilityProbe: Boolean?` —
+      non testé (2 appels → 1 ensureBrowser)
+    * `isAvailable()` ffmpeg absent → false — non testé directement
+      (peut mocker ffmpegPath inexistant)
+    * `capture()` rejects empty slideDurations — non testé
+      (`require(slideDurations.isNotEmpty())`)
+    * `capture()` happy path — gated Playwright (skip)
+    * `encodeSlides` parallelism `coerceIn(1, size)` — non testé
+    * `runFfmpeg` exit code != 0 → CapturingException — non testé
+      (mocker ffmpegPath inexistant → exit code != 0)
+    * `close()` resets `availabilityProbe = null` — non testé
+  - Testable sans I/O : `capture()` empty durations throws (1 test),
+    `isAvailable()` ffmpeg absent → false (1 test avec ffmpegPath
+    inexistant), `close()` idempotent (déjà testé), `name()` invariant
+    (déjà testé).
+
+=== Décisions préliminaires (US-0 cadrage, non finalisé)
+
+. **Pas de nouveau domaine** — CAP-28 étend les tests existants dans
+  `capsule` (PiperTtsEngine, ManimEngineImpl, ScreenshotCaptureImpl),
+  pas de nouveau fichier prod.
+. **Baby-step TDD strict** — RED (nouveaux tests failing sur branches
+  non couvertes) → GREEN (aucun prod à modifier, tests passent sur
+  comportement existant) → REFACTOR.
+. **Tests sans I/O uniquement** — les branches requérant un vrai
+  binaire (piper, manim, ffmpeg, Playwright) sont gated et non couvertes
+  par CAP-28 (requiert integration tests, hors scope).
+. **3 US découpage** — US-1 PiperTtsEngine (~4 unit), US-2 ManimEngineImpl
+  (~3 unit), US-3 ScreenshotCaptureImpl (~4 unit). Total ~11 unit.
+
+== Clôture anticipée
+
+Pilote a demandé clôture immédiate (« laisse le travail sur les epics et
+cloture la session »). US-0 cadrage partiellement effectué (audit +
+décisions préliminaires), US-1/2/3 non démarrés. Zéro code modifié —
+session de gouvernance pure.
+
+== Baseline préservée
+
+. 977 unit VERT (baseline S-122 préservée — zéro test ajouté)
+. 69 functional VERT (baseline préservée)
+. cucumber dédiés GREEN (baseline préservée)
+. `compileKotlin` UP-TO-DATE
+. Zéro régression, zéro secret, zéro bump BOM
+
+== Prochaine session
+
+Session 124 — reprendre CAP-28 US-0 finalisation cadrage (décisions
+formelles + MàJ BACKLOG détaillé) puis US-1/2/3 baby-step TDD.
+
+== Score
+
+7/10 — audit solide mais clôture anticipée avant exécution US-1/2/3.

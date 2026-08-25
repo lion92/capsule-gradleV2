@@ -1,38 +1,44 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
-:session: 123
+:session: 124
 :borough: Détroit
-:session_precedente: 122 — EPIC CAP-ANIM TERMINÉ 3/3 US
+:session_precedente: 123 — CAP-28 US-0 audit partiel (clôturé anticipé)
 
 == Contexte Hérité
 
-Session 122 — **EPIC CAP-ANIM TERMINÉ 3/3 US** :
-- US-0 cadrage rétroactif (10 constats + 9 décisions, EPIC "EN COURS"
-  puis TERMINÉ — code Remotion fonctionnel livré par PR #1 S-121 mais
-  gaps tests à combler)
-- US-1 tests unit manquants 40 unit : AudioCodecs 7, RemotionConfig 8,
-  RemotionTemplate 7, RemotionCaptureImpl 14, CaptureResolver REMOTION 4
-- US-2 cucumber BDD `capsule_remotion.feature` 3 scénarios + runner dédié
-  16ème + 2 functional `RemotionCaptureFunctionalTest`
-- **Restauration `build.gradle.kts` post-PR #1** : `cucumberConventions`
-  block + 16 `CucumberTaskSpec` + `kover` + `publishing` + `buildscript`
-  resolution + gates CR-10/Playwright were stripped by PR #1 (lion92) —
-  restored from pre-merge version + added CAP-ANIM spec
-- 977 unit VERT (+40 net baseline 937), 69 functional VERT (+2 net
-  baseline 67), cucumber dédiés GREEN. Domaine `capsule.remotion` clos.
+Session 123 — **CAP-28 US-0 audit partiel** :
+- Audit 3 fichiers low-coverage (PiperTtsEngine 31%, ManimEngineImpl 25%,
+  ScreenshotCaptureImpl 26%) — gaps identifiés par fichier
+- Décisions préliminaires (pas de nouveau domaine, baby-step TDD strict,
+  tests sans I/O uniquement, 3 US ~11 unit)
+- Clôture anticipée par pilote — US-0 cadrage non finalisé (pas de MàJ
+  BACKLOG détaillé), US-1/2/3 non démarrés
+- Zéro code modifié — session gouvernance pure
+- Baseline 977 unit VERT préservée, 69 functional VERT, cucumber GREEN
 
-== Mission Session 123
+== Mission Session 124
 
-=== Maintenance P2
+=== CAP-28 — Finalisation + exécution
 
-Reste P2 : CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
+. US-0 finalisation cadrage — formaliser décisions + MàJ BACKLOG détaillé
+  (table US-1/2/3 + gaps précis par fichier)
+. US-1 PiperTtsEngine — ~4 unit : `language()` 2 branches (null → null,
+  non-null → resolveByPiperModel), `resolvedModel` resolution (language
+  null → model default, language non-null → piperModel)
+. US-2 ManimEngineImpl — ~3 unit : `probeDuration` delegation ffprobe
+  absent → 0.0, `name()` invariant, `isAvailable` memoization (2 appels)
+. US-3 ScreenshotCaptureImpl — ~4 unit : `capture()` empty durations
+  throws, `isAvailable()` ffmpeg absent → false, `close()` resets probe,
+  `encodeSlides` parallelism coerceIn
 
-* CAP-28 — Coverage gaps (PiperTtsEngine 31%, ManimEngineImpl 25%,
-  ScreenshotCaptureImpl 26%). Pas de nouveau domaine, étend les tests
-  existants.
-* CAP-CR3-4 — Convention Gradle `resolveScriptDir/resolveDeckDir`.
-* CAP-CHAPITRE — Découpage chapitres vidéo (markers temporels).
-* CAP-PODCAST — Export audio-only (MP3 podcast).
-* CAP-PREVIEW — Aperçu rapide (thumbnails + first-frame).
+Baby-step TDD strict RED → GREEN → REFACTOR. Tests sans I/O uniquement
+(branches gated piper/manim/ffmpeg/Playwright hors scope).
+
+=== Reste P2 (après CAP-28)
+
+* CAP-CR3-4 — Convention Gradle `resolveScriptDir/resolveDeckDir`
+* CAP-CHAPITRE — Découpage chapitres vidéo (markers temporels)
+* CAP-PODCAST — Export audio-only (MP3 podcast)
+* CAP-PREVIEW — Aperçu rapide (thumbnails + first-frame)
 
 == Points d'attention
 
@@ -45,7 +51,8 @@ Reste P2 : CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
 * `build.gradle.kts` restauré S-122 — 16 `CucumberTaskSpec` actifs
 * Conventions 0.0.3 (mavenLocal), BOM 0.0.27, codebase 0.0.10, slider 0.0.18
 * CaptureStrategy 3 valeurs : PLAYWRIGHT (default), SCREENSHOT, REMOTION
-* Domaine `capsule.remotion` (12ème) clos — 5 fichiers prod + 40 unit + 3 cucumber + 2 functional
+* 12 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
+  i18n, ci, transcript, remotion + support
 
 == Rappels
 
@@ -59,5 +66,4 @@ Reste P2 : CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
 * `compileOnly(libs.slider)` conservé (runtime). `testImplementation(libs.slider)`
   RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder)
 * Catalogue : `slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27
-* 12 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
-  i18n, ci, transcript, remotion + support
+* CAP-28 = coverage gaps, pas de nouveau domaine, étend tests existants
