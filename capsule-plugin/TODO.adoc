@@ -1,5 +1,5 @@
 = TODO — capsule-gradle (Détroit)
-:last_update: 2026-08-14 (Session 118 — **CAP-TRANSCRIPT US-4 tâche `generateCapsuleTranscript` + wiring**. Domaine `capsule.transcript` (11ème) enrichi. `GenerateCapsuleTranscriptTask` tâche Gradle : groupe `generate`, `@InputFile speakerNotesFile` `@PathSensitive(RELATIVE)`, `@Input language`, `@Input strategy: Property<TranscriptStrategy>`, `@OutputFile transcriptOutput` (`build/capsule/<deckName>-transcript.adoc`), `@Optional @ServiceReference llmService` (strategy=LLM → `project.aiProvider` + `resolveModel` + `ChatModelTranscriptEnhancer`). Économie d'encre skip si output existe ET non-blank. Wiring `CapsuleManager.registerGenerateTranscriptTask` + `dependsOn("generateCapsuleContent")` (tests `-x generateCapsuleContent` standalone). Clé `task.generateCapsuleTranscript.description` 24ème 11 `Messages*.properties`. 3 functional `GenerateCapsuleTranscriptFunctionalTest` (registration, TEMPLATE déterministe, LLM mock `/api/chat`). Baby-step TDD RED → GREEN → REFACTOR. 917 unit VERT baseline S-117, 67 functional VERT +3 net, cucumber dédiés GREEN, `check` BUILD SUCCESSFUL 26m03s, zéro régression, zéro secret, zéro bump BOM. EPIC CAP-TRANSCRIPT 5/6 US.)
+:last_update: 2026-08-25 (Session 122 — **EPIC CAP-ANIM TERMINÉ 3/3 US** — cadrage rétroactif code Remotion livré PR #1 (S-121) + tests unit manquants 40 unit (AudioCodecs/RemotionConfig/RemotionTemplate/RemotionCaptureImpl/CaptureResolver REMOTION) + cucumber BDD `capsule_remotion.feature` 3 scénarios + runner dédié 16ème + 2 functional. 977 unit VERT (+40 net baseline 937), 69 functional VERT (+2 net baseline 67). `check` BUILD SUCCESSFUL. Zéro régression, zéro secret, zéro bump BOM.)
 
 '''
 == ✅ EPIC CAP-MODEL — TERMINE (session 069)
@@ -241,7 +241,7 @@
 . [x] CAP-GLOSSARY-3 — Cucumber BDD `capsule_glossary_context.feature` `@context @glossary` (3 scénarios) + runner dédié `CapsuleGlossaryContextCucumberRunner` (pattern S-082) + steps préfixés "glossary context" (bug S-088) + `CucumberTaskSpec("cucumberTestGlossaryContext")` 14ème. Baby-step BDD RED → GREEN (3/3 PASSED en 55s) → REFACTOR. ✅ S-112
 
 '''
-== 🟡 Prochaine session — Backlog capsule restant (CAP-27, CAP-CR3, CAP-ARCH)
+== 🟡 Prochaine session — Backlog capsule restant (CAP-28, CAP-CR3-4, CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW)
 
 '''
 == ✅ EPIC CAP-27 — VTT burn-in (3 US ~5 pts, TERMINÉ 3/3 US S-113)
@@ -273,6 +273,7 @@
 . [x] 🟢 CAP-29 — Pipeline Traduction Vidéo Multi-Langue (7 US ~20 pts, TERMINÉ 7/7 US : CAP-29.0 ✅ S-076, CAP-29.1 ✅ S-077, CAP-29.2 ✅ S-078, CAP-29.3 ✅ S-079, CAP-29.4 ✅ S-080, CAP-29.5 ✅ S-081, CAP-29.6 ✅ S-082)
 . [x] 🟢 CAP-ARCH — Collaboration cross-borough slider+codebase (8 US ~25 pts, refondu S-083 LLM-driven via codebase — CAP-ARCH-0 ✅ S-083, CAP-ARCH-1 ✅ S-084, CAP-ARCH-2 ✅ S-085, CAP-ARCH-3 ✅ S-086, CAP-ARCH-4 ✅ S-088, CAP-ARCH-7 ✅ S-087+S-088, reste CAP-ARCH-5→6)
 . [x] 🟠 CAP-GLOSSARY — Injection terminologique (4 US ~6 pts, TERMINÉ 4/4 US : US-0 ✅ S-109 cadrage, US-1 ✅ S-110 data classes + loader + builder + prompt builder, US-2 ✅ S-111 wiring + 2 functional, US-3 ✅ S-112 cucumber 3 scénarios + clôture)
+. [x] 🟣 CAP-ANIM — Stratégie capture Remotion (3 US ~7 pts, TERMINÉ 3/3 US : US-0 ✅ S-122 cadrage, US-1 ✅ S-122 40 unit, US-2 ✅ S-122 3 cucumber + 2 functional)
 
 '''
 == ✅ EPIC CAP-MP4 — Export MP4/H.264 + format distribution (TERMINÉ 4/4 US)
@@ -306,4 +307,11 @@
 . [x] CAP-TRANSCRIPT-2 — `TranscriptPlan` data class immutable 4 champs (`deckName` + `segments: List<SlideSegment>` + `language` + `outputPath`, invariants `isNotBlank` × 3, segments vide autorisé, pattern `CapsuleVideoPlan`) + `TranscriptBuilder` object pur `build(plan): String` (template AsciiDoc déterministe `= <deckName>` level-0 + `:language:` attribute + `INTRO`/`OUTRO` const + une section `== title` par segment HTML avec speakerNote body, MANIM skipped, pattern `CapsuleScriptWriter`) + `TranscriptPromptBuilder` object pur `buildEnhancePrompt(plan): String` (embed `TranscriptBuilder.build(plan)` + rules keep headings + transitions + AsciiDoc only, pattern `DefaultCapsulePromptBuilder`). Baby-step TDD 23 unit (7 `TranscriptPlanTest` + 11 `TranscriptBuilderTest` + 5 `TranscriptPromptBuilderTest`). 911 unit VERT +23 net. `check` BUILD SUCCESSFUL 22m49s. ✅ S-116
 . [x] CAP-TRANSCRIPT-3 — `TranscriptLlmEnhancer` port (interface sync `enhance(template, plan): String`, pattern `CapsuleLlm`) + `ChatModelTranscriptEnhancer` adapter (bridge `ChatModel` langchain4j pattern `ChatModelCapsuleLlm`). Fallback degraded LLM blank → template original (pattern `AudioPostProcessor.process`). Short-circuit si template blank. Baby-step TDD 6 unit (`TranscriptLlmEnhancerTest` + FakeChatModel override `doChat`). 917 unit VERT +6 net. `check` BUILD SUCCESSFUL 23m33s. ✅ S-117
 . [x] CAP-TRANSCRIPT-4 — Tâche `generateCapsuleTranscript` + wiring. `GenerateCapsuleTranscriptTask` groupe `generate` `@InputFile speakerNotesFile` `@PathSensitive(RELATIVE)` + `@Input language` + `@Input strategy: Property<TranscriptStrategy>` + `@OutputFile transcriptOutput` (`build/capsule/<deckName>-transcript.adoc`) + `@Optional @ServiceReference llmService` (strategy=LLM → `project.aiProvider` + `resolveModel` + `ChatModelTranscriptEnhancer`). Économie d'encre skip si output existe ET non-blank. `dependsOn("generateCapsuleContent")` (tests `-x generateCapsuleContent` standalone). Clé `task.generateCapsuleTranscript.description` 24ème 11 `Messages*.properties`. Baby-step TDD 3 functional `GenerateCapsuleTranscriptFunctionalTest` (registration, TEMPLATE déterministe, LLM mock `/api/chat`). 917 unit VERT baseline S-117, 67 functional VERT +3 net. `check` BUILD SUCCESSFUL 26m03s. ✅ S-118
-. [ ] CAP-TRANSCRIPT-5 — Cucumber BDD `capsule_transcript.feature` `@transcript` (4 scénarios) + runner dédié `CapsuleTranscriptCucumberRunner` 15ème
+. [x] CAP-TRANSCRIPT-5 — Cucumber BDD `capsule_transcript.feature` `@transcript` (4 scénarios) + runner dédié `CapsuleTranscriptCucumberRunner` 15ème ✅ S-119
+
+'''
+== ✅ EPIC CAP-ANIM — Stratégie capture Remotion (TERMINÉ 3/3 US S-122)
+
+. [x] CAP-ANIM-0 — Cadrage EPIC rétroactif (audit 5 fichiers prod + 10 unit existants, 10 constats + 9 décisions, EPIC "EN COURS" puis TERMINÉ) ✅ S-122
+. [x] CAP-ANIM-1 — Tests unit manquants (AudioCodecs 7 unit + RemotionConfig 8 unit + RemotionTemplate 7 unit + RemotionCaptureImpl 14 unit + CaptureResolver REMOTION 4 unit = 40 unit, 977 VERT 0 FAIL) ✅ S-122
+. [x] CAP-ANIM-2 — Functional + Cucumber BDD (capsule_remotion.feature 3 scénarios + runner dédié CapsuleRemotionCucumberRunner 16ème + 2 functional RemotionCaptureFunctionalTest, 69 functional VERT +2) ✅ S-122

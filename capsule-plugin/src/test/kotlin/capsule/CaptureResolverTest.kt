@@ -109,4 +109,64 @@ class CaptureResolverTest {
         assertTrue(ex.message!!.contains("playwright"), "error should name the engine")
         assertTrue(ex.message!!.contains("/usr/bin/chromium"), "error should mention the path")
     }
+
+    @Test
+    fun `strategy REMOTION returns RemotionCapture when available`() {
+        val remotion = FakeCapture(available = true, engineName = "remotion")
+        val resolved = CaptureResolver.resolve(
+            strategy = CaptureStrategy.REMOTION,
+            strict = false,
+            playwrightFactory = { FakeCapture(true, "playwright-java") },
+            screenshotFactory = { FakeCapture(true, "screenshot+ffmpeg") },
+            noOpCapture = noOp,
+            remotionFactory = { remotion },
+        )
+        assertEquals("remotion", resolved.name())
+    }
+
+    @Test
+    fun `strategy REMOTION unavailable and non-strict falls back to NoOp`() {
+        val resolved = CaptureResolver.resolve(
+            strategy = CaptureStrategy.REMOTION,
+            strict = false,
+            playwrightFactory = { FakeCapture(true, "playwright-java") },
+            screenshotFactory = { FakeCapture(true, "screenshot+ffmpeg") },
+            noOpCapture = noOp,
+            remotionFactory = { FakeCapture(false, "remotion") },
+        )
+        assertEquals("noop-playwright", resolved.name())
+    }
+
+    @Test
+    fun `strategy REMOTION unavailable and strict throws IllegalStateException`() {
+        val ex = assertFailsWith<IllegalStateException> {
+            CaptureResolver.resolve(
+                strategy = CaptureStrategy.REMOTION,
+                strict = true,
+                playwrightFactory = { FakeCapture(true, "playwright-java") },
+                screenshotFactory = { FakeCapture(true, "screenshot+ffmpeg") },
+                noOpCapture = noOp,
+                enginePath = "/usr/bin/node",
+                remotionFactory = { FakeCapture(false, "remotion") },
+            )
+        }
+        assertTrue(ex.message!!.contains("remotion"), "error should name the engine")
+        assertTrue(ex.message!!.contains("/usr/bin/node"), "error should mention the path")
+        assertTrue(ex.message!!.contains("strictMode"), "error should suggest disabling strictMode")
+    }
+
+    @Test
+    fun `strategy REMOTION falls back to NoOp when no remotionFactory is supplied`() {
+        // The default remotionFactory returns the noOpCapture, so a caller
+        // that never opts into Remotion gets the no-op fallback rather than
+        // a crash — backward compat for configs that predate the strategy.
+        val resolved = CaptureResolver.resolve(
+            strategy = CaptureStrategy.REMOTION,
+            strict = false,
+            playwrightFactory = { FakeCapture(true, "playwright-java") },
+            screenshotFactory = { FakeCapture(true, "screenshot+ffmpeg") },
+            noOpCapture = noOp,
+        )
+        assertEquals("noop-playwright", resolved.name())
+    }
 }

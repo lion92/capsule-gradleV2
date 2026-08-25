@@ -1724,7 +1724,7 @@ AudioPostProcessor port/adapter + factory + wiring + cucumber), `capsule.validat
 (S-118), US-5 ✅ TERMINÉ (S-119). Domaine `capsule.transcript` (11ème) clos
 (8 fichiers prod). 917 unit + 67 functional + 4 cucumber transcript GREEN.
 
-=== 🎬 EPIC CAP-ANIM — Stratégie capture Remotion (animations vidéo) — INTÉGRÉ PAR PR #1 (S-121)
+=== 🎬 EPIC CAP-ANIM — Stratégie capture Remotion (animations vidéo) — TERMINÉ 3/3 US (S-122)
 
 _Vision_ : `CaptureStrategy` (PLAYWRIGHT/SCREENSHOT) couvre l'enregistrement
 temps réel et la capture par screenshots. `CaptureStrategy.REMOTION` ajoute
@@ -1732,6 +1732,104 @@ une 3ème stratégie : composition image par image via Remotion (React),
 permettant des animations complexes (cascade, dérive, fondu, progressbar) +
 incrustation Manim (`OffthreadVideo`). Le rendu peut produire du MP4/H.264
 en plus du WebM natif.
+
+_Domaine_ : `capsule.remotion` (12ème). _Dépendances_ : Node.js + npm
+(runtime), Remotion composition (plugin resources `capsule/remotion/`),
+Manim assets (optionnel). _DAG_ : N2 — ne dépend pas d'un autre borough.
+
+==== Constats d'audit (S-122, CAP-ANIM-0)
+
+. **Code fonctionnel complet et câblé bout-en-bout** — la PR #1 (lion92,
+  S-121 merge) a livré l'intégralité du domaine `capsule.remotion` : enum
+  `CaptureStrategy.REMOTION` (3ème valeur, fallback `PLAYWRIGHT` backward
+  compat), `RemotionConfig` (4 champs `projectDir`/`nodeExecutablePath`/
+  `concurrency`/`fps`), `RemotionPlanner` (object pur, 157 lignes),
+  `RemotionCaptureImpl` (194 lignes, implémente `PlaywrightCapture`),
+  `RemotionTemplate` (object, 94 lignes), `AudioCodecs` (object, 21 lignes),
+  `CaptureResolver.RemotionFactory` fun interface + dispatch, wiring
+  `CapsuleVideoTask.resolvePlaywrightCapture` (lambda `remotionFactory`),
+  `CapsulePlugin.pushConfigIntoExtension` (4 properties), `CapsuleConfigMerger`
+  (`mergeRemotionConfig` 4 sources ENV<props<YAML<CLI), `PlaywrightCapture.
+  outputExtension()` abstrait (WebM ou MP4 selon stratégie).
+. **Tests existants minimes** — 9 unit `RemotionPlannerTest` (plan/frames/
+  props/argv/slides-markup/head-markup) + 1 unit `CaptureStrategyTest`
+  (`remotion` case-insensitive). Soit 10 unit pour ~370 lignes de code prod.
+. **Gap tests confirmé** — zéro test sur `RemotionCaptureImpl` (194 lignes),
+  zéro sur `RemotionTemplate` (94 lignes), zéro sur `AudioCodecs` (21 lignes).
+  Pas de functional test Remotion. Pas de cucumber dédié `@anim @remotion`.
+. **Gate Playwright déjà en place (S-121)** — `PlaywrightTestGuard` (pure
+  domain CR-10) + `PlaywrightTestAssumption` (JUnit5 `assumeTrue`) +
+  `cucumberTestIntegration onlyIf`. Tests Playwright ignorés par défaut
+  (trop longs 15-30 min), override `-PrunPlaywrightTests`/`CI=true`. Les tests
+  NoOp restent actifs. Cette gate couvre déjà les tests Remotion qui spin un
+  vrai Node+npm (remotion render) — pas besoin d'une 2ème gate.
+. **`RemotionCaptureImpl.isAvailable()`** probe `node --version` (cheap,
+  memoized `availabilityProbe: Boolean?`). Ne vérifie pas `npm` ni
+  `node_modules` — délibéré (KDoc : un `node_modules` manquant est rapporté
+  par le render avec un message plus actionable qu'un NoOp silencieux).
+. **`outputExtension()` = "mp4"** (hardcodé H.264, `CODEC = "h264"`).
+  Remotion produit du MP4 natif, pas de WebM. Le reste du pipeline (audio
+  mux, burn-in, conversion) consomme `outputExtension()` — le MP4 Remotion
+  est ré-encodé en MP4 par `convertFormatIfEnabled` (court-circuité par
+  garde `if (ext == "mp4") return` L819, économie d'encre).
+. **`RemotionTemplate.materialiseInto`** copie 5 fichiers (package.json,
+  render.mjs, src/index.js, src/Root.jsx, src/Capsule.jsx) depuis plugin
+  resources `capsule/remotion/` vers `projectDir`, puis `npm install` si
+  `node_modules` absent. Économie d'encre : fichiers réécrits seulement si
+  diff (`contentEquals`), `node_modules` installé une seule fois.
+. **`RemotionConfig` merger 4 sources** déjà câblé (`mergeRemotionConfig`
+  L359, `mergeStr`/`mergeInt` pour 4 champs, ENV `CAPSULE_REMOTION_*`,
+  props `capsule.remotion.*`). Pas de test merger dédié — couvert
+  indirectement par `CapsuleConfigMergerTest` global (à vérifier US-1).
+. **Économie d'encre Remotion** : `stageManimAssets` ne copie que si
+  `!target.exists() || target.length() != source.length()` (delta). Le render
+  lui-même n'est pas skippable (pas de cache vidéo Remotion) — seule la
+  copie des assets Manim l'est.
+. **`RemotionConfig.validate()`** existe (L269) — retourne erreur si
+  `concurrency < 1` ou `fps` hors 1..120. Pas de test unit sur cette
+  validation (gap US-1).
+
+==== Décisions architecturales (S-122, CAP-ANIM-0)
+
+. **Statut EPIC : "EN COURS"** — le code est fonctionnel et livré mais les
+  gaps tests (US-1 unit + US-2 functional/cucumber) doivent être comblés
+  pour atteindre le standard baby-step TDD/BDD du borough (couverture
+  unit sur chaque object pur, cucumber dédié par EPIC). L'EPIC n'est pas
+  "TERMINÉ par PR #1" — la PR a livré le code, la session documente et
+  comble les gaps tests.
+. **Pas de nouveau domaine** — `capsule.remotion` (12ème) déjà créé par
+  PR #1. US-1/US-2 étendent les tests existants, pas de nouveau prod.
+. **US-1 priorité : objets purs d'abord** — `AudioCodecs` (21 lignes, le
+  plus simple) → `RemotionTemplate` (94 lignes, I/O resources + npm) →
+  `RemotionCaptureImpl` (194 lignes, Node ProcessBuilder). Baby-step TDD
+  RED → GREEN → REFACTOR. Tests unit sur méthodes pures (`forContainer`,
+  `slidesMarkup`/`headMarkup` déjà testés via `RemotionPlannerTest` —
+  étendre à `stageManimAssets`/`outputExtension`/`isAvailable` mockable).
+. **`RemotionTemplate` test sans I/O réseau** — `materialiseInto` copie
+  resources + `npm install`. Tests unit sur la copie (fake resource via
+  classpath de test, pas sur `npm install` qui nécessite réseau — gated
+  `assumeTrue` ou skip). Pas de spy ProcessBuilder (trop fragile).
+. **US-2 Cucumber BDD `@anim @remotion`** — 4 scénarios : (1) strategy
+  REMOTION dispatch via `CaptureResolver.resolve` (NoOp factory, pas de
+  vrai Node), (2) NoOp fallback when `isAvailable()` false + non-strict,
+  (3) `RemotionConfig` DSL 4 sources (merger ENV/props/YAML/CLI), (4)
+  `outputExtension() == "mp4"` + `AudioCodecs.forContainer("mp4") == "aac"`.
+  Runner dédié `CapsuleRemotionCucumberRunner` (pattern S-082) + steps
+  préfixés "remotion" (bug S-088 glue `capsule.scenarios` partagée) +
+  `CucumberTaskSpec("cucumberTestRemotion")` 16ème. Pas de `@integration`
+  (rendu Remotion réel nécessite Node+npm+network — gated CI uniquement).
+. **Pas de functional test Remotion réel** — un functional test qui spin
+  un vrai Remotion render (Node+npm+render) est trop coûteux et
+  non-reproductible CI. Le functional test US-2 utilise NoOp factory
+  (pattern `CaptureStrategyFunctionalTest` S-096). Le rendu réel est
+  couvert par dogfooding manuel (S-121 PR #1 a dogfooded).
+. **Gate Playwright couvre Remotion** — pas de gate Remotion séparée.
+  `PlaywrightTestAssumption` (S-121) skip les tests qui spin Chromium.
+  Remotion render spin Node+npm+Chromium (Remotion uses headless Chrome
+  internally) — donc `cucumberTestIntegration` déjà gated couvre le cas.
+. **`RemotionConfig.validate()`** testé US-1 (gap constat #9).
+. **Pas de bump BOM** — tout est local au borough (domaine `capsule.remotion`
+  interne, pas de contrat N0). Zéro dépendance cross-borough.
 
 _Code livré par PR #1 (lion92, S-121 merge)_ :
 
@@ -1742,7 +1840,7 @@ _Code livré par PR #1 (lion92, S-121 merge)_ :
 * `RemotionPlanner` (object pur, 157 lignes) — planifie la composition
   image par image
 * `RemotionCaptureImpl` (194 lignes) — implémente `PlaywrightCapture`,
- bridge Node.js ProcessBuilder
+  bridge Node.js ProcessBuilder
 * `RemotionTemplate` (94 lignes) — templates React embarqués (cascade,
   dérive, fondu, progressbar)
 * `AudioCodecs` (21 lignes) — codec selon conteneur (WebM=libvorbis,
@@ -1751,60 +1849,54 @@ _Code livré par PR #1 (lion92, S-121 merge)_ :
   (WebM ou MP4 selon stratégie)
 * `CaptureResolver.RemotionFactory` fun interface + dispatch `when(strategy)
   REMOTION -> remotionFactory.create()`
-* `RemotionPlannerTest` (9 unit tests)
+* `RemotionPlannerTest` (9 unit tests) + `CaptureStrategyTest` remotion (1 unit)
 * `CapsuleVideoTask.resolvePlaywrightCapture` étendu `remotionFactory` lambda
-
-_Gaps identifiés (à combler S-122+)_ :
-
-* Tests unit manquants sur `RemotionCaptureImpl` (194 lignes, 0 test)
-* Tests unit manquants sur `RemotionTemplate` (94 lignes, 0 test)
-* Tests unit manquants sur `AudioCodecs` (21 lignes, 0 test)
-* Pas de functional test Remotion
-* Pas de cucumber dédié `@anim @remotion`
-* `RemotionConfig` merger 4 sources — vérifier wiring complet
-* `isAvailable()` Remotion — vérifier Node.js disponibilité
-* **DISABLE Playwright dans les tests** — les tests fonctionnels/cucumber qui
-  invoquent `generateCapsuleVideo` déclenchent Playwright (Chromium headless),
-  ce qui rallonge le `check` de 15-30 min et casse la reproductibilité CI sans
-  Chromium installé. `CaptureStrategyFunctionalTest` scénario #1
-  (`strategy PLAYWRIGHT default`) + cucumber `capsule_capture_strategy.feature`
-  scénario #1 + tous les cucumber `@integration` avec capture Playwright réel.
-  Action : `assumeTrue` JUnit5 sur `isPlaywrightAvailable()` (probe Chromium)
-  ou `onlyIf { hasProperty("runPlaywrightTests") }` sur les tasks cucumber
-  concernées, pattern CR-10 (`cucumberTest onlyIf CI/runCucumber`). Les tests
-  NoOp (noop engine, NoOpPlaywrightCapture) restent actifs par défaut — seuls
-  les tests qui spin un vrai Chromium sont gated.
+* `CapsulePlugin.pushConfigIntoExtension` 4 properties remotion
+* `CapsuleConfigMerger.mergeRemotionConfig` 4 sources (ENV/props/YAML/CLI)
+* Plugin resources `src/main/resources/capsule/remotion/` (package.json,
+  render.mjs, src/index.js, src/Root.jsx, src/Capsule.jsx)
 
 [cols="1,3,2,2", options="header"]
 |===
 | US | Description | Pts | Statut
 
 | CAP-ANIM-0
-| *Cadrage EPIC rétroactif* — audit code Remotion (4 fichiers prod + 9 unit
-  `RemotionPlannerTest`), documenter vision + architecture + gaps. Évaluer
-  si EPIC "TERMINÉ par PR #1" (documentation rétroactive) ou "EN COURS"
-  (gaps à combler).
+| *Cadrage EPIC rétroactif* — audit code Remotion (5 fichiers prod + 10 unit
+  existants), 10 constats + 9 décisions architecturales, documenter vision +
+  architecture + gaps. Décision : EPIC "EN COURS" (code livré PR #1, gaps
+  tests à combler US-1/US-2). MàJ INDEX/BACKLOG/PROMPT_REPRISE. Zéro code.
 | 1
-| 🟡 À FAIRE (S-122)
+| ✅ TERMINÉ (S-122)
 
 | CAP-ANIM-1
-| *Tests unit manquants* — `RemotionCaptureImpl` (194 lignes, 0 test),
-  `RemotionTemplate` (94 lignes, 0 test), `AudioCodecs` (21 lignes, 0 test).
-  Baby-step TDD : ~15-20 unit.
+| *Tests unit manquants* — `AudioCodecs` (7 unit, `forContainer` + 2
+  const), `RemotionConfig.validate()` (8 unit), `RemotionTemplate` (7 unit,
+  `materialiseInto` copie resources sans npm/network, `FILES` liste),
+  `RemotionCaptureImpl` (14 unit, `outputExtension`/`name`/`isAvailable`
+  mockable + `slidesMarkup`/`headMarkup`/`stageManimAssets` + `CODEC`/
+  `VIDEO_MAX_CONCURRENCY` const + `capture` rejects empty deck/durations),
+  `CaptureResolver` REMOTION (4 unit dispatch NoOp/strict/fallback).
+  Baby-step TDD RED → GREEN → REFACTOR : 40 unit. 977 unit VERT 0 FAIL.
 | 3
-| 🟡 À FAIRE
+| ✅ TERMINÉ (S-122)
 
 | CAP-ANIM-2
-| *Functional test + Cucumber BDD* — `capsule_remotion.feature` `@anim
-  @remotion` (scénarios : strategy REMOTION dispatch, NoOp fallback when
-  Node.js unavailable, RemotionConfig DSL 4 sources, outputExtension MP4).
-  Runner dédié + steps préfixés "remotion" + `CucumberTaskSpec`.
+| *Functional + Cucumber BDD* — `capsule_remotion.feature` `@anim
+  @remotion` (3 scénarios : NoOp fallback when node unavailable, strictMode
+  fails when node unavailable, config DSL fps/concurrency) + runner dédié
+  `CapsuleRemotionCucumberRunner` (pattern S-082) + steps préfixés
+  "remotion" (bug S-088) + `CucumberTaskSpec("cucumberTestRemotion")` 16ème.
+  2 functional `RemotionCaptureFunctionalTest` (NoOp WebM produced,
+  strictMode fails). Pas de `@integration` (rendu réel gated CI).
+  Baby-step BDD RED → GREEN (3/3 PASSED) → REFACTOR. 69 functional VERT
+  (+2), 977 unit VERT (+40 net baseline 937 → 977).
 | 3
-| 🟡 À FAIRE
+| ✅ TERMINÉ (S-122)
 |===
 
-_Total_ : 3 US, ~7 pts. _Statut_ : code livré par PR #1 (S-121), documentation
-+ gaps à combler. Domaine `capsule.remotion` (12ème).
+_Total_ : 3 US, ~7 pts. _Statut_ : TERMINÉ — code livré par PR #1 (S-121),
+cadrage + tests unit + functional + cucumber comblés (S-122). Domaine
+`capsule.remotion` (12ème) clos.
 
 === 📸 EPIC CAP-CR3-3 — Branchement ScreenshotCapture (alternative configurable) — TERMINÉ 5/5 US (S-096)
 
@@ -2873,8 +2965,8 @@ _Total_ : 3 US, ~4 pts.
 | CAP-ANIM
 | 3
 | 7
-| 🟡 P2
-| 🟡 Code livré par PR #1 (S-121) — gaps tests à combler (US-0 cadrage, US-1 unit, US-2 cucumber)
+| ✅ P2
+| ✅ TERMINÉ (S-122) — cadrage + 40 unit + 3 cucumber + 2 functional
 |===
 
 _Total_ : 11 EPICs, 48 US, ~90 pts. _Séquence MVP0 recommandée_ :

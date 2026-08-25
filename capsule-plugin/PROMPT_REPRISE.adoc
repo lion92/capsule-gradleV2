@@ -1,86 +1,63 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
-:session: 122
+:session: 123
 :borough: Détroit
-:session_precedente: 121 — Intégration PR #1 (lion92) + fix ScreenshotCaptureImpl
+:session_precedente: 122 — EPIC CAP-ANIM TERMINÉ 3/3 US
 
 == Contexte Hérité
 
-Session 121 — **Intégration PR #1 "Fix/build toolchain et pipeline" (lion92)** :
-- Merge branche `pr-1` (8 commits) dans main
-- Conflit INDEX.adoc résolu (version S-120 conservée)
-- Contenu PR : fix build (conventions 0.0.3, JDK 25, exclusion Groovy 3),
-  fix i18n (namespace `capsule/i18n/Messages`), fix 4 défauts capture +
-  capture conteneur (Chromium --no-sandbox), feat CAP-ANIM
-  (`CaptureStrategy.REMOTION` + RemotionPlanner/RemotionCaptureImpl/
-  RemotionTemplate + Manim incrusté OffthreadVideo + AudioCodecs),
-  fix TTS économie d'encre
-- Fix post-merge baby-step TDD/BDD : `ScreenshotCaptureImpl.isAvailable()`
-  étendu pour vérifier ffmpeg (`isFfmpegAvailable()` probe `ffmpeg -version`)
-- Test functional + cucumber scénario #3 corrigés → "strictMode fails when
-  ffmpeg is unavailable"
-- **Gate Playwright** : `PlaywrightTestGuard` (pure domain CR-10) +
-  `PlaywrightTestAssumption` (JUnit5 assumeTrue) + `cucumberTestIntegration
-  onlyIf` — tests Playwright ignorés par défaut (trop longs 15-30 min),
-  override `-PrunPlaywrightTests`/`CI=true`. Tests NoOp restent actifs
-- Gate : 937 unit 0 FAIL (+7 PlaywrightTestGuard), 67 functional (1 skipped
-  Playwright), cucumber dédiés GREEN, `cucumberTestIntegration` skippé défaut
+Session 122 — **EPIC CAP-ANIM TERMINÉ 3/3 US** :
+- US-0 cadrage rétroactif (10 constats + 9 décisions, EPIC "EN COURS"
+  puis TERMINÉ — code Remotion fonctionnel livré par PR #1 S-121 mais
+  gaps tests à combler)
+- US-1 tests unit manquants 40 unit : AudioCodecs 7, RemotionConfig 8,
+  RemotionTemplate 7, RemotionCaptureImpl 14, CaptureResolver REMOTION 4
+- US-2 cucumber BDD `capsule_remotion.feature` 3 scénarios + runner dédié
+  16ème + 2 functional `RemotionCaptureFunctionalTest`
+- **Restauration `build.gradle.kts` post-PR #1** : `cucumberConventions`
+  block + 16 `CucumberTaskSpec` + `kover` + `publishing` + `buildscript`
+  resolution + gates CR-10/Playwright were stripped by PR #1 (lion92) —
+  restored from pre-merge version + added CAP-ANIM spec
+- 977 unit VERT (+40 net baseline 937), 69 functional VERT (+2 net
+  baseline 67), cucumber dédiés GREEN. Domaine `capsule.remotion` clos.
 
-== Mission Session 122
+== Mission Session 123
 
-=== Cadrage EPIC CAP-ANIM (Remotion) post-merge
-
-La PR #1 a introduit un nouveau domaine `capsule.remotion` (4 fichiers prod :
-`RemotionCapture.kt`, `RemotionPlanner.kt`, `RemotionTemplate.kt`,
-`AudioCodecs.kt`) + `CaptureStrategy.REMOTION` (3ème valeur enum) +
-`RemotionConfig` dans `CapsuleConfig` (section `capsule.remotion.*` DSL 4
-sources). Ce code est **fonctionnel mais non cadré** — aucun EPIC BACKLOG ne
-le documente. Mission S-122 : cadrer formellement EPIC CAP-ANIM.
-
-*Étapes* :
-. Audit code Remotion (4 fichiers prod + RemotionPlannerTest + RemotionConfig)
-. Documenter dans BACKLOG : vision, domaine, US rétroactives (le code existe
-  déjà, l'EPIC documente ce qui a été livré par la PR)
-. Évaluer gaps : tests unit manquants sur RemotionCaptureImpl/RemotionTemplate/
-  AudioCodecs, pas de cucumber dédié `@anim @remotion`, pas de functional test
-. Décider : EPIC CAP-ANIM "TERMINÉ par PR #1" (documentation rétroactive) ou
-  EPIC CAP-ANIM "EN COURS" (gaps à combler : unit + cucumber + functional)
-
-=== Maintenance P2 (post-cadrage si temps restant)
+=== Maintenance P2
 
 Reste P2 : CAP-CHAPITRE, CAP-PODCAST, CAP-PREVIEW, CAP-CR3-4, CAP-28.
 
+* CAP-28 — Coverage gaps (PiperTtsEngine 31%, ManimEngineImpl 25%,
+  ScreenshotCaptureImpl 26%). Pas de nouveau domaine, étend les tests
+  existants.
+* CAP-CR3-4 — Convention Gradle `resolveScriptDir/resolveDeckDir`.
+* CAP-CHAPITRE — Découpage chapitres vidéo (markers temporels).
+* CAP-PODCAST — Export audio-only (MP3 podcast).
+* CAP-PREVIEW — Aperçu rapide (thumbnails + first-frame).
+
 == Points d'attention
 
-* Conventions 0.0.3 pas sur Central (mavenLocal seulement)
-* Namespace i18n : `capsule/i18n/Messages.properties` (PR #1 a déplacé)
-* `CaptureStrategy` a maintenant 3 valeurs : PLAYWRIGHT, SCREENSHOT, REMOTION
-* `ScreenshotCaptureImpl.isAvailable()` vérifie Chromium + ffmpeg (fix S-121)
-* `AudioCodecs` : codec selon conteneur (WebM=libvorbis, MP4=aac)
-* `PlaywrightCapture.outputExtension()` : abstrait l'extension de sortie
-* 930 unit VERT (baseline S-121), 67 functional VERT, cucumber dédiés GREEN
-
-== Rappels
-
-* GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 937 unit VERT (S-121 baseline), 67 functional VERT (1 Playwright skipped
-  défaut), cucumber dédiés GREEN, `cucumberTestIntegration` skippé défaut
+* 977 unit VERT (S-122 baseline), 69 functional VERT, cucumber dédiés GREEN
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
 * Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
   préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
 * English only : code, Gherkin, commentaires
 * Économie d'encre = skip si artefact existe et valide (AGENT.adoc Loi)
-* Ports Ollama : 11437-11465 rotation (11434-11436 INTERDITS)
-* `CapsuleMessages` object (domaine `capsule.i18n`) — 11
-  `Messages*.properties` 10 langues, 24 keys (namespace `capsule/i18n/`)
+* `build.gradle.kts` restauré S-122 — 16 `CucumberTaskSpec` actifs
+* Conventions 0.0.3 (mavenLocal), BOM 0.0.27, codebase 0.0.10, slider 0.0.18
+* CaptureStrategy 3 valeurs : PLAYWRIGHT (default), SCREENSHOT, REMOTION
+* Domaine `capsule.remotion` (12ème) clos — 5 fichiers prod + 40 unit + 3 cucumber + 2 functional
+
+== Rappels
+
+* GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
+* 977 unit VERT (S-122 baseline), 69 functional VERT, cucumber dédiés GREEN
+* `cucumberTest` skippé par défaut (CR-10), `cucumberTestIntegration` skippé
+  par défaut (Playwright gate S-121)
 * DSL 4 sources pattern : ENV < props < YAML < CLI
-* 3 loaders domaine `capsule.context` : `DocContextLoader`,
-  `PedagogicalScenarioLoader`, `GlossaryLoader`
 * Pattern object pur pour commande ffmpeg : `AudioPostCommand`,
   `SubtitleBurnInCommand`, `FormatConversion`
-* `capsule.feed.SlideSegment` — source de vérité contenu pédagogique
 * `compileOnly(libs.slider)` conservé (runtime). `testImplementation(libs.slider)`
   RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder)
 * Catalogue : `slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27
-* Domaine `capsule.transcript` (11ème) : 8 fichiers prod (CAP-TRANSCRIPT TERMINÉ)
-* Domaine `capsule.remotion` (12ème, PR #1) : 4 fichiers prod à documenter
-* CaptureStrategy 3 valeurs : PLAYWRIGHT (default), SCREENSHOT, REMOTION
+* 12 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
+  i18n, ci, transcript, remotion + support

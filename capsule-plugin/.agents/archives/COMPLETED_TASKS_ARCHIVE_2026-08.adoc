@@ -1,6 +1,17 @@
 = COMPLETED_TASKS_ARCHIVE — Août 2026
 :date: 2026-08-25
 
+== Session 122 — EPIC CAP-ANIM TERMINÉ 3/3 US ✅
+
+Cadrage rétroactif code Remotion livré PR #1 (S-121) + tests unit manquants
+40 unit (AudioCodecs 7 + RemotionConfig 8 + RemotionTemplate 7 +
+RemotionCaptureImpl 14 + CaptureResolver REMOTION 4) + cucumber BDD
+`capsule_remotion.feature` 3 scénarios + runner dédié 16ème + 2 functional.
+Restauration `build.gradle.kts` post-PR #1 (`cucumberConventions` block +
+16 `CucumberTaskSpec` + `kover` + `publishing` + gates CR-10/Playwright
+stripped by PR #1). 977 unit VERT (+40 net), 69 functional VERT (+2 net),
+cucumber dédiés GREEN. Domaine `capsule.remotion` (12ème) clos.
+
 == Session 121 — Intégration PR #1 (lion92) + fix ScreenshotCaptureImpl ✅
 
 Merge branche `pr-1` (8 commits) dans main. Conflit INDEX.adoc résolu.

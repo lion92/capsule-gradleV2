@@ -22,6 +22,7 @@ version = libs.plugins.capsule.get().version
 
 repositories {
     mavenLocal()
+    mavenCentral()
 }
 
 cucumberConventions {
@@ -159,6 +160,17 @@ cucumberConventions {
             tags = listOf("@transcript"),
             runnerClass = "capsule.scenarios.CapsuleTranscriptCucumberRunner",
             timeoutMinutes = 30,
+        ),
+        // CAP-ANIM US-2 — Remotion capture strategy BDD (NoOp fallback, strictMode,
+        // config DSL). Dedicated runner pattern S-082; steps prefixed "remotion"
+        // (bug S-088 glue capsule.scenarios shared). No @integration — real
+        // Remotion render is gated CI/dogfooding.
+        CucumberTaskSpec(
+            name = "cucumberTestRemotion",
+            features = listOf("src/test/features/capsule_remotion.feature"),
+            tags = listOf("@anim", "@remotion"),
+            runnerClass = "capsule.scenarios.CapsuleRemotionCucumberRunner",
+            timeoutMinutes = 15,
         ),
         // Integration cucumber run — scenarios tagged @integration or @manim
         // (burn-in E2E with real ffmpeg, Manim pipeline NoOp). Excluded from the

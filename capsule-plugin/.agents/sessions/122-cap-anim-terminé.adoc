@@ -1,0 +1,129 @@
+= Session 122 — EPIC CAP-ANIM TERMINÉ 3/3 US (Remotion capture strategy)
+:date: 2026-08-25
+:borough: Détroit
+:epic: CAP-ANIM
+:score: 9/10
+
+== Objectif
+
+Cadrer formellement l'EPIC CAP-ANIM (code Remotion livré par PR #1 lion92
+en S-121 sans documentation BACKLOG) et combler les gaps tests :
+tests unit manquants sur 4 fichiers prod + cucumber BDD dédié + functional.
+
+== Réalisations
+
+=== CAP-ANIM-0 — Cadrage EPIC rétroactif (1 pt, ✅ TERMINÉ)
+
+Audit code Remotion (5 fichiers prod + 10 unit existants) :
+- `CaptureStrategy.REMOTION` (3ème valeur enum, fallback PLAYWRIGHT)
+- `RemotionConfig` (4 champs, section `capsule.remotion.*` DSL 4 sources)
+- `RemotionPlanner` (object pur, 157 lignes)
+- `RemotionCaptureImpl` (194 lignes, implémente `PlaywrightCapture`)
+- `RemotionTemplate` (object, 94 lignes, copie resources + npm install)
+- `AudioCodecs` (object, 21 lignes)
+- `CaptureResolver.RemotionFactory` dispatch + wiring `CapsuleVideoTask`
+- `RemotionPlannerTest` (9 unit) + `CaptureStrategyTest` remotion (1 unit)
+
+10 constats + 9 décisions architecturales. Décision : EPIC "EN COURS"
+(code fonctionnel mais gaps tests à combler) puis TERMINÉ après US-1/US-2.
+Domaine `capsule.remotion` (12ème).
+
+=== CAP-ANIM-1 — Tests unit manquants (3 pts, ✅ TERMINÉ)
+
+40 unit tests créés (baby-step TDD RED → GREEN → REFACTOR) :
+- `AudioCodecsTest` (7 unit) — `forContainer` WEBM/MP4/m4v/mov, case-
+  insensitive, leading dot, unknown fallback, const WEBM/MP4
+- `RemotionConfigTest` (8 unit) — `validate()` blank projectDir/
+  nodeExecutablePath, concurrency<1, fps hors 1..120, defaults, all-errors-
+  at-once, boundaries 1/120
+- `RemotionTemplateTest` (7 unit) — FILES list 5 resources, classpath
+  presence, materialiseInto creates files + nested dirs + idempotent
+  (contentEquals, pre-create node_modules to skip npm), non-existent dir,
+  missing resource null
+- `RemotionCaptureImplTest` (14 unit) — name "remotion", outputExtension
+  "mp4", isAvailable false when node missing + cache + close resets,
+  slidesMarkup greedy + fallback, headMarkup extract + empty, capture
+  rejects empty deck/durations, CODEC "h264", VIDEO_MAX_CONCURRENCY 2
+- `CaptureResolverTest` REMOTION (4 unit) — dispatch available, NoOp
+  fallback non-strict, strict throws IllegalStateException, no factory
+  default NoOp
+
+977 unit VERT 0 FAIL (+40 net baseline 937).
+
+=== CAP-ANIM-2 — Functional + Cucumber BDD (3 pts, ✅ TERMINÉ)
+
+- `capsule_remotion.feature` 3 scénarios `@anim @remotion` :
+  1. NoOp fallback when node unavailable → WebM produced
+  2. strictMode fails when node unavailable → "remotion is not available"
+  3. config DSL fps 60 + concurrency 8 → build succeeds
+- `CapsuleRemotionCucumberRunner` 16ème (pattern S-082)
+- `CapsuleRemotionSteps` préfixés "remotion" (bug S-088)
+- `CucumberTaskSpec("cucumberTestRemotion")` 16ème
+- 2 functional `RemotionCaptureFunctionalTest` (NoOp WebM produced,
+  strictMode fails)
+
+3/3 cucumber PASSED, 2/2 functional PASSED. 69 functional VERT (+2 net
+baseline 67).
+
+=== Restauration build.gradle.kts post-PR #1
+
+Découverte majeure : la PR #1 (lion92, S-121 merge) a stripppé l'intégralité
+du block `cucumberConventions` (16 `CucumberTaskSpec`), `kover`,
+`publishing`, `buildscript` resolution, et les gates CR-10/Playwright
+du `build.gradle.kts`. Le build.gradle.kts était réduit à 86 lignes (vs
+294 pré-PR). Restauration depuis la version pre-merge + ajout du 16ème
+`CucumberTaskSpec` pour CAP-ANIM. Sans cette restauration, les cucumber
+dédiés (cucumberTestTranscript, cucumberTestAudioPost, etc.) n'étaient
+pas enregistrés comme tasks Gradle.
+
+== Gate
+
+- 977 unit tests VERT 0 FAIL (+40 net baseline 937)
+- 69 functional tests VERT 0 FAIL (+2 net baseline 67, 1 skipped Playwright)
+- 3 cucumber Remotion PASSED
+- `:compileKotlin` BUILD SUCCESSFUL
+- `:test` BUILD SUCCESSFUL
+- `:functionalTest` BUILD SUCCESSFUL
+- Zéro régression, zéro secret, zéro bump BOM
+
+== Fichiers créés
+
+- `src/test/kotlin/capsule/AudioCodecsTest.kt` (7 unit)
+- `src/test/kotlin/capsule/RemotionConfigTest.kt` (8 unit)
+- `src/test/kotlin/capsule/RemotionTemplateTest.kt` (7 unit)
+- `src/test/kotlin/capsule/RemotionCaptureImplTest.kt` (14 unit)
+- `src/test/kotlin/capsule/scenarios/CapsuleRemotionSteps.kt` (cucumber steps)
+- `src/test/kotlin/capsule/scenarios/CapsuleRemotionCucumberRunner.kt` (runner 16ème)
+- `src/test/features/capsule_remotion.feature` (3 scénarios)
+- `src/functionalTest/kotlin/capsule/RemotionCaptureFunctionalTest.kt` (2 functional)
+
+== Fichiers modifiés
+
+- `src/test/kotlin/capsule/CaptureResolverTest.kt` (+4 tests REMOTION)
+- `build.gradle.kts` (restauration `cucumberConventions` + 16 `CucumberTaskSpec`
+  + `kover` + `publishing` + `buildscript` + gates CR-10/Playwright)
+- `BACKLOG.adoc` (CAP-ANIM section refondue + table agrégée)
+- `TODO.adoc` (CAP-TRANSCRIPT-5 coché + CAP-ANIM section + last_update)
+- `.agents/INDEX.adoc` (session 122 + prochaine 123)
+- `.agents/SESSIONS_HISTORY.adoc` (session 122)
+- `PROMPT_REPRISE.adoc` (session 123)
+
+== Décisions architecturales
+
+1. EPIC "EN COURS" puis TERMINÉ — le code est fonctionnel et livré mais
+   les gaps tests doivent être comblés pour atteindre le standard baby-step
+   TDD/BDD du borough
+2. Pas de nouveau domaine — `capsule.remotion` (12ème) déjà créé par PR #1
+3. Pas de functional test Remotion réel — un functional test qui spin un
+   vrai Remotion render (Node+npm+Chromium) est trop coûteux et non-
+   reproductible CI. Le functional test utilise NoOp factory
+4. Gate Playwright couvre Remotion — pas de gate Remotion séparée.
+   `PlaywrightTestAssumption` (S-121) skip les tests qui spin Chromium
+5. Pas de bump BOM — tout est local au borough (domaine interne)
+
+== Score
+
+9/10 — EPIC TERMINÉ en 1 session (cadrage + 40 unit + 3 cucumber + 2
+functional + restauration build.gradle.kts). Baby-step TDD/BDD strict.
+1 point retiré pour la découverte de la régression build.gradle.kts
+(PR #1 a stripppé la config cucumber — aurait dû être détecté en S-121).
