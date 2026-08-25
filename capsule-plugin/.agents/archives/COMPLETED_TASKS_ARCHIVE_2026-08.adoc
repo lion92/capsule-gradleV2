@@ -1288,3 +1288,26 @@ Baby-step TDD strict RED → GREEN. 986 unit VERT 0 FAIL (+9 net baseline
 N0 ne contient pas "de" (10 langues). EPIC CAP-28 clos.
 
 Rapport : `.agents/sessions/124-cap-28-coverage.adoc`.
+
+---
+
+== Session 125 (2026-08-25) — CAP-PODCAST US-0 Cadrage
+
+EPIC : CAP-PODCAST — Extraction audio-only (mode podcast)
+Statut : 🟡 EN COURS 1/3 US (US-0 ✅, US-1/2 TODO)
+
+Cadrage formel EPIC CAP-PODCAST — audit 15 constats + 12 décisions
+architecturales (gouvernance pure, zéro code). Domaine `capsule.podcast` 13ème.
+`PodcastConfig` 13ème section `CapsuleConfig` (2 champs defaults backward
+compat). 4 sources DSL. `PodcastConcatenator` object pur FFmpeg concat demuxer
++ Impl + NoOp + factory `resolvePodcastConcatenator` 8ème. Tâche
+`generateCapsulePodcast` dependsOn `generateCapsuleVideo` (MP3 slides produits
+par `synthesizeTtsForScript`). Économie d'encre skip si `podcastOutput` existe
++ `probeDuration > 0.0`. `CapsuleMessages` 25ème key. Runner dédié 17ème
+`CapsulePodcastCucumberRunner` + steps préfixés "podcast" (bug S-088).
+
+3 US ~4 pts (US-0 ✅, US-1 config+concatenator+factory unit TODO S-126, US-2
+task+wiring+cucumber TODO S-127). Baseline 986 unit VERT préservée.
+Pattern S-057/S-063.
+
+Rapport : `.agents/sessions/125-cap-podcast-cadrage.adoc`.

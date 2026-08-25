@@ -1,0 +1,273 @@
+= Session 125 — CAP-PODCAST US-0 Cadrage EPIC
+:session: 125
+:borough: Détroit
+:date: 2026-08-25
+:type: cadrage+gouvernance
+:score: 9/10
+:baseline: 986 unit VERT (S-124), 69 functional VERT, cucumber dédiés GREEN
+:code_modifie: zéro (gouvernance pure pattern S-057/S-063)
+:epic: CAP-PODCAST
+
+== Mission
+
+Cadrage formel de l'EPIC CAP-PODCAST — extraction audio-only (mode podcast).
+L'objectif MVP0 est de servir les stagiaires en mobilité : le MP3 existe déjà
+par slide (`build/capsule/<deckName>/slide-XX.mp3`), il suffit de concaténer
+pour produire un fichier unique `${deckName}.mp3` consommable sur lecteur
+audio. Pas de nouveau moteur TTS, pas de nouvelle capture — réutilisation
+pure des artefacts existants via FFmpeg concat.
+
+== Audit code (15 constats)
+
+. **MP3 slides déjà produits** par `CapsuleBuildTask.kt:125` + `CapsuleVideoTask.kt:390` :
+  `deckOutputDir.resolve("slide-$idx.mp3")` où `idx = String.format("%02d", seg.index)`.
+  Localisation : `build/capsule/<deckName>/slide-01.mp3`, `slide-02.mp3`, ... `slide-NN.mp3`
+  (zero-padded 2 digits). Le `deckName` est parsé depuis `*-script.txt` via
+  `CapsuleScriptReader.read(script)`.
+
+. **Aucune concaténation existante** — le pipeline actuel mux les MP3 *dans le WebM*
+  (`mixAudioWithVideo` L1042) mais ne produit jamais un MP3 standalone. Le stagiaire
+  qui veut écoute-only doit extraire manuellement. CAP-PODCAST ferme ce gap.
+
+. **Pattern de référence `FormatConversion`** (`src/main/kotlin/capsule/FormatConversion.kt`, 68 lignes) —
+  object pur `convertIfNeeded(finalVideo, format, converter, probeDuration): File` avec
+  économie d'encre skip si target existe + `probeDuration(target) > 0.0`. Le `probeDuration`
+  lambda est injecté pour testabilité. Mirror exact pour `PodcastConcatenator.concatenateIfNeeded`.
+
+. **Pattern de référence `AudioPostCommand`** (`src/main/kotlin/capsule/audio/AudioPostCommand.kt`, 107 lignes) —
+  object pur `buildArgv(...): List<String>`. Zéro I/O, fully unit-testable. Mirror pour
+  `PodcastConcatenator.buildConcatArgv` (FFmpeg concat demuxer) ou `buildPipeArgv`
+  (FFmpeg pipe `concat:a|b|c`).
+
+. **`CapsuleConfig` 12 sections** (`CapsuleConfig.kt:14-27`) : input, tts, capture, distrib,
+  manim, output, strictMode, context, validation, audioPost, transcript, remotion.
+  `PodcastConfig` = 13ème section (pattern `TranscriptConfig` — 2 champs `enabled: Boolean = false`
+  + `outputFile: String = ""` defaults backward compat). `enabled = false` par défaut (opt-in —
+  pas de concat MP3 sauf si l'auteur le demande).
+
+. **`CapsuleConfigMerger.merge()` dispatcher** (`CapsuleConfigMerger.kt:27-47`) — 12 sections
+  mergées. `mergePodcastConfig` ajouté après `remotion` (13ème). Pattern `mergeTranscriptConfig`
+  (L352-357) — `mergeBoolean` enabled + `mergeStr` outputFile (avec env fallback).
+
+. **Helpers scalaires disponibles** (`CapsuleConfigMerger.kt:431-476`) :
+  `mergeStr(cli, key, yaml, props, env)` (5 args — env fallback), `mergeBoolean(cli, key, yaml, props)`
+  (4 args). Pas de nouveau helper nécessaire (podcast = 1 Boolean + 1 String).
+
+. **`CapsuleExtension` properties** (`CapsuleModels.kt:202-213` pattern transcript) :
+  `transcriptEnabled: Property<Boolean>` convention `false` + `transcriptStrategy: Property<TranscriptStrategy>`
+  convention `TEMPLATE` + helper Groovy. Mirror : `podcastEnabled: Property<Boolean>` convention `false`
+  + `podcastOutputFile: Property<String>` convention `""`. Pas de helper Groovy (Boolean + String simples).
+  `CapsuleConventions` étendu 2 champs.
+
+. **`pushConfigIntoExtension`** (`CapsulePlugin.kt:203-209` pattern transcript) :
+  guard `if (!ext.X.isPresent || ext.X.get() == conventions.X) ext.X.set(config.section.field)`.
+  Podcast block après transcript block. 2 guards (enabled + outputFile).
+
+. **`CapsuleManager.registerTasks()`** (`CapsuleManager.kt:11-27`) — 15 tâches enregistrées.
+  `registerGeneratePodcastTask` ajouté après `registerValidateCapsuleVideoDurationTask` (16ème).
+  Pattern `registerGenerateTranscriptTask` (L327-368) — `tasks.register("generateCapsulePodcast", ...)`,
+  `task.group = CapsuleMessages.get("task.group.generate", lang)` (podcast = génération, pas nouveau
+  groupe), `task.description = CapsuleMessages.get("task.generateCapsulePodcast.description", lang)`,
+  `task.dependsOn("generateCapsuleVideo")` (les MP3 sont produits par le pipeline vidéo — pas
+  `generateCapsuleContent` qui produit les speaker notes, mais `generateCapsuleVideo` qui synthesize
+  les MP3 via `synthesizeTtsForScript`).
+
+. **`resolvePodcastConcatenator` factory** (`CapsuleManager.kt:480` pattern audio post, 8ème factory) :
+  `noop` → NoOp, unavailable + non-strict → NoOp, unavailable + strict → throw via
+  `StrictModeGuard.requireAvailable`, available → Impl. Pattern `resolveAudioPostProcessor`
+  (8ème factory après `resolveAudioPostProcessor`).
+
+. **`CapsuleMessages`** (`Messages.properties:32`) — 24ème key `task.generateCapsuleTranscript.description`.
+  25ème key `task.generateCapsulePodcast.description` (11 fichiers `Messages*.properties` :
+  base + en + 9 langues fr/zh/hi/es/ar/bn/pt/ru/ur). Groupe `task.group.generate` réutilisé
+  (podcast = génération audio). Tests `CapsuleMessagesTest` + `MessagesFrTranslationTest` à
+  étendre (gap connu : 3 keys `verification`/`validateCapsuleVideoDuration`/`generateCapsuleTranscript`
+  non testées — backfill optionnel US-2, pas blocking).
+
+. **`CucumberTaskSpec` 16 entries** (`build.gradle.kts:28-188`) — 17ème `cucumberTestPodcast` après
+  `cucumberTestTranscript` (L155-163), avant `cucumberTestIntegration`. Tags `@podcast`. Runner dédié
+  `CapsulePodcastCucumberRunner` (pattern S-082 `@SelectClasspathResource` + `glue = ["capsule.scenarios"]`).
+  Bug S-088 : `capsule.scenarios` glue partagée → step phrases préfixées "podcast" (e.g.
+  `@Given("the podcast deck {string} has {int} slide MP3 files")`).
+
+. **`MediaProbeUtil.probeDuration`** (`MediaProbeUtil.kt:23`) — retourne `Double` secondes, `0.0` si
+  ffprobe absent/fichier manquant. Réutilisable pour économie d'encre : skip concat si
+  `build/capsule/<deckName>-podcast.mp3` existe ET `probeDuration > 0.0`. Pattern `FormatConversion.convertIfNeeded`
+  L46 (`if (mp4File.exists() && probeDuration(mp4File) > 0.0)`).
+
+. **NoOp podcast** — pattern `NoOpAudioPostProcessor` (`capsule/audio/AudioPostProcessor.kt`) :
+  `concatenate()` retourne `false` (degraded, caller garde l'état — ici ne produit pas de MP3,
+  log warn "ffmpeg unavailable, podcast skipped"). Pas de crash, backward compat.
+
+== Décisions architecturales (12)
+
+. **Domaine `capsule.podcast` (13ème)** — nouveau domaine DDD pur (data class config + object pur
+  concatenator + interface/Impl/NoOp + tâche Gradle). Fichiers prod dans
+  `src/main/kotlin/capsule/podcast/`. Pattern `capsule.audio`/`capsule.transcript`/`capsule.validation`.
+  13ème domaine après feed/pipeline/ai/context/multilang/validation/audio/i18n/ci/transcript/remotion +
+  support.
+
+. **`PodcastConfig` 13ème section `CapsuleConfig`** — 2 champs `enabled: Boolean = false` (opt-in,
+  backward compat — configs existantes sans `podcast.enabled` ne produisent pas de MP3) +
+  `outputFile: String = ""` (défaut vide → convention résout `build/capsule/<deckName>-podcast.mp3`).
+  Pattern `TranscriptConfig` (2 champs, defaults backward compat). Pas de `outputDir` (la sortie
+  vit dans `build/capsule/` déjà résolu par `CapsuleExtension.outputDir`).
+
+. **4 sources DSL** — ENV `CAPSULE_PODCAST_ENABLED` + `CAPSULE_PODCAST_OUTPUT_FILE` < props
+  `capsule.podcast.enabled` + `capsule.podcast.outputFile` < YAML `podcast.enabled` +
+  `podcast.outputFile` < CLI `-Pcapsule.podcast.enabled` + `-Pcapsule.podcast.outputFile`.
+  `mergePodcastConfig` pattern `mergeTranscriptConfig` (`mergeBoolean` enabled + `mergeStr` outputFile
+  avec env fallback). `loadFromEnvironment` + `buildConfigFromProperties` étendus.
+
+. **`PodcastConcatenator` object pur** — `buildConcatArgv(mp3Files: List<File>, outputFile: File,
+  ffmpegPath: String): List<String>` utilise FFmpeg concat demuxer (`-f concat -safe 0 -i <listfile>
+  -c copy <output>`) — nécessite un fichier liste temporaire `concat-list.txt` (un ligne
+  `file '/abs/path/slide-01.mp3'` par slide). Alternative : pipe `concat:a.mp3|b.mp3|c.mp3` (plus
+  simple, pas de fichier temp, mais limite ~1024 chars sur certains OS). **Décision : concat demuxer**
+  (robuste, scalable à 32+ slides, pattern `AudioPostCommand` buildArgv pure). L'Impl gère l'écriture
+  du fichier liste temporaire + cleanup (try/finally pattern `mixAudioWithVideo`).
+
+. **`PodcastConcatenatorImpl` (FFmpeg)** — `interface PodcastConcatenator { fun concatenate(mp3Files:
+  List<File>, outputFile: File): Boolean; fun isAvailable(): Boolean; fun name(): String }`.
+  `concatenate` retourne `Boolean` (pattern `VideoFormatConverter`/`AudioPostProcessor` — degraded
+  mode : si échec, caller garde l'état, pas de crash). `isAvailable()` check `ffmpeg -version`.
+  Impl : write `concat-list.txt` → `ProcessBuilder(buildConcatArgv).start()` → waitFor → exitValue 0 =
+  success. Try/finally cleanup `concat-list.txt`.
+
+. **`NoOpPodcastConcatenator`** — `concatenate` retourne `false` (degraded, no MP3 produced, log
+  warn "podcast skipped (ffmpeg unavailable or noop)"). Pattern `NoOpAudioPostProcessor`. `isAvailable()
+  = true`, `name() = "noop-podcast"`.
+
+. **Factory `resolvePodcastConcatenator` (8ème)** — `CapsuleManager` companion. `ffmpegPath = "noop"` →
+  NoOp, unavailable + non-strict → NoOp, unavailable + strict → throw via `StrictModeGuard.requireAvailable
+  (strict, "ffmpeg (podcast)", false, ffmpegPath)`, available → Impl. Pattern `resolveAudioPostProcessor`
+  (L480-489).
+
+. **Tâche `generateCapsulePodcast`** — groupe `generate` (réutilise `task.group.generate`), `dependsOn
+  ("generateCapsuleVideo")` (les MP3 slides sont produits par `synthesizeTtsForScript` dans
+  `CapsuleVideoTask`, pas par `generateCapsuleContent` qui produit les speaker notes AsciiDoc).
+  `@DisableCachingByDefault(because = "Podcast concatenation (ffmpeg)")`. Inputs : `@InputFiles
+  @PathSensitive(RELATIVE) audioFiles: ConfigurableFileCollection` (les `slide-*.mp3` résolus depuis
+  `build/capsule/<deckName>/`) + `@Input deckName: Property<String>`. Output : `@OutputFile
+  podcastOutput: RegularFileProperty` (convention `build/capsule/<deckName>-podcast.mp3`).
+  Économie d'encre : skip si `podcastOutput` existe ET `MediaProbeUtil.probeDuration(podcastOutput) > 0.0`
+  (pattern `FormatConversion.convertIfNeeded` L46). Si `!enabled` → no-op + log "skipped". Si
+  `audioFiles` vide → warn + skip (non-bloquant — le pipeline vidéo peut ne pas avoir produit de MP3
+  en NoOp TTS). Sinon factory `resolvePodcastConcatenator` + `concatenate(mp3Files, output)`.
+
+. **`CapsuleExtension` étendu 2 properties** — `podcastEnabled: Property<Boolean>` convention `false`
+  + `podcastOutputFile: Property<String>` convention `""`. `CapsuleConventions` étendu 2 champs
+  (`podcastEnabled = false`, `podcastOutputFile = ""`). `pushConfigIntoExtension` podcast block
+  (2 guards `isPresent` + convention, pattern transcript L203-209).
+
+. **`CapsuleMessages` 25ème key** — `task.generateCapsulePodcast.description` ajouté à `Messages.properties`
+  (base EN) + 9 `Messages_*.properties`. Groupe `task.group.generate` réutilisé (pas de nouveau
+  groupe). Description EN : `Concatenates slide MP3 audio files into a single podcast MP3 (audio-only,
+  for mobile learners)`. Tests `CapsuleMessagesTest` + `MessagesFrTranslationTest` étendus (gap
+  connu : 3 keys non testées `verification`/`validateCapsuleVideoDuration`/`generateCapsuleTranscript`
+  — backfill optionnel US-2, pas blocking — si non backfillé, la nouvelle key sera dans le même état
+  que ces 3, i.e. présente dans `Messages.properties` mais absente des `@ValueSource`).
+
+. **Cucumber runner dédié 17ème** — `CapsulePodcastCucumberRunner` (pattern S-082
+  `@SelectClasspathResource("features/capsule_podcast.feature")` + `glue = ["capsule.scenarios"]` +
+  `plugin = ["pretty", "html:build/reports/tests/cucumberTestPodcast.html"]`). Steps
+  `CapsulePodcastSteps` préfixés "podcast" (bug S-088 — `capsule.scenarios` glue partagée, step
+  phrases uniques : "the podcast deck {string} has {int} slide MP3 files" vs transcript "a transcript
+  plan for deck {string}"). `CucumberTaskSpec("cucumberTestPodcast")` 17ème câblé `build.gradle.kts`
+  (après `cucumberTestTranscript` L163, avant `cucumberTestIntegration`).
+
+. **Économie d'encre (AGENT.adoc)** — skip si `podcastOutput` existe ET `probeDuration > 0.0` (re-concat
+  d'un MP3 déjà valide = gaspillage). Skip si `!podcastEnabled` (défaut false, backward compat). Skip
+  si `audioFiles` vide (pipeline vidéo NoOp TTS ne produit pas de MP3 — degraded, log warn). Skip si
+  ffmpeg unavailable + non-strict (NoOp). Le probe `ffprobe` est cheap (< 1s) — pas de gating
+  nécessaire.
+
+== Découpage US (3 US, ~4 pts)
+
+[cols="1,3,2,2", options="header"]
+|===
+| US | Description | Pts | Statut
+
+| CAP-PODCAST-0
+| *Cadrage EPIC* — audit code (15 constats), 12 décisions architecturales,
+  pattern `FormatConversion`/`AudioPostCommand`/`TranscriptConfig`/`generateCapsuleTranscript`,
+  domaine `capsule.podcast` 13ème, `PodcastConfig` 13ème section, 4 sources DSL,
+  `PodcastConcatenator` object pur + Impl + NoOp + factory 8ème, tâche
+  `generateCapsulePodcast` dependsOn `generateCapsuleVideo`, économie d'encre
+  skip si existe + probeDuration > 0, `CapsuleMessages` 25ème key, runner dédié
+  17ème `CapsulePodcastCucumberRunner` + steps préfixés "podcast" (bug S-088).
+  MàJ INDEX/BACKLOG/PROMPT_REPRISE. Zéro code — gouvernance pure pattern S-057.
+| 1
+| ✅ TERMINÉ (S-125)
+
+| CAP-PODCAST-1
+| *`PodcastConfig` + `PodcastConcatenator` object pur + `PodcastConcatenatorImpl`
+  + `NoOpPodcastConcatenator` + `CapsuleConfig` 13ème section + `mergePodcastConfig`
+  4 sources + `CapsuleExtension` 2 properties + `CapsuleConventions` 2 champs +
+  `pushConfigIntoExtension` podcast block + `resolvePodcastConcatenator` factory
+  (8ème)* — `PodcastConfig(enabled: Boolean = false, outputFile: String = "")`
+  dans `src/main/kotlin/capsule/podcast/PodcastConfig.kt`. `PodcastConcatenator`
+  object pur `buildConcatArgv(mp3Files, outputFile, ffmpegPath): List<String>`
+  + `buildConcatListContent(mp3Files): String` (fichier liste `file '/abs/path'\n`).
+  `PodcastConcatenator` interface (`concatenate(mp3Files, outputFile): Boolean`
+  + `isAvailable()` + `name()`) + `PodcastConcatenatorImpl(ffmpegPath)` +
+  `NoOpPodcastConcatenator`. `CapsuleConfig` étendu `podcast: PodcastConfig =
+  PodcastConfig()`. `mergePodcastConfig` (`mergeBoolean` enabled + `mergeStr`
+  outputFile). `loadFromEnvironment` (`CAPSULE_PODCAST_ENABLED` +
+  `CAPSULE_PODCAST_OUTPUT_FILE`) + `buildConfigFromProperties`
+  (`capsule.podcast.enabled` + `capsule.podcast.outputFile`). `CapsuleExtension`
+  2 properties + `CapsuleConventions` 2 champs + `pushConfigIntoExtension` 2 guards.
+  `CapsuleManager.resolvePodcastConcatenator(ffmpegPath, strict)` 8ème factory.
+  Baby-step TDD : ~10 unit (PodcastConcatenator.buildConcatArgv order/paths,
+  buildConcatListContent format/empty/escaped, PodcastConfig defaults,
+  merger defaults/YAML/props/ENV/CLI/blank, NoOp returns false, Impl isAvailable,
+  factory noop/unavailable/strict/available).
+| 2
+| ⬜ TODO (S-126)
+
+| CAP-PODCAST-2
+| *Tâche `generateCapsulePodcast` + wiring `CapsuleManager` + `CapsuleMessages`
+  25ème key + Cucumber BDD* — `GenerateCapsulePodcastTask` (`@DisableCachingByDefault`,
+  `@InputFiles @PathSensitive(RELATIVE) audioFiles: ConfigurableFileCollection`,
+  `@Input deckName: Property<String>`, `@OutputFile podcastOutput:
+  RegularFileProperty`, `@Input podcastEnabled: Property<Boolean>`). TaskAction :
+  skip si `!enabled` → log "skipped" ; skip si `podcastOutput` existe ET
+  `probeDuration > 0.0` (économie d'encre) ; skip si `audioFiles` vide → warn ;
+  factory `resolvePodcastConcatenator` + `concatenate`. `dependsOn
+  ("generateCapsuleVideo")`. `CapsuleManager.registerGeneratePodcastTask` (16ème,
+  pattern `registerGenerateTranscriptTask` L327-368) — `audioFiles` résolus depuis
+  `build/capsule/<deckName>/slide-*.mp3` (provider lazy), `podcastOutput` convention
+  `build/capsule/<deckName>-podcast.mp3`. `CapsuleMessages` 25ème key
+  `task.generateCapsulePodcast.description` (11 `Messages*.properties`). Cucumber
+  `capsule_podcast.feature` `@podcast` (3 scénarios : default disabled → skipped
+  no-op, enabled + slide MP3s → MP3 produit + log lifecycle, enabled + NoOp
+  ffmpeg → degraded no MP3). Runner dédié `CapsulePodcastCucumberRunner` (pattern
+  S-082) + steps `CapsulePodcastSteps` préfixés "podcast" (bug S-088) +
+  `CucumberTaskSpec("cucumberTestPodcast")` 17ème câblé `build.gradle.kts`.
+  `CapsuleMessagesTest` + `MessagesFrTranslationTest` étendus (25ème key ajoutée
+  aux `@ValueSource`). Baby-step TDD/BDD : ~3 unit (PodcastConcatenatorTest) +
+  1 functional (GeneratePodcastFunctionalTest : disabled skip, enabled NoOp →
+  no MP3 + warn) + 3 cucumber scénarios GREEN.
+| 3
+| ⬜ TODO (S-127)
+|===
+
+_Total_ : 3 US (US-0 cadrage + US-1/2 exécution), ~4 pts. _Méthode_ : baby-step
+DDD/TDD/BDD, 3 niveaux tests/US (unit → functional → cucumber), English only
+code/Gherkin. _Pattern de référence_ : `capsule.transcript` (TranscriptConfig 2
+champs + merger + task + cucumber), `capsule.audio` (AudioPostCommand object pur
++ Impl/NoOp/factory), `FormatConversion` (économie d'encre probeDuration > 0).
+_Séquence_ : US-0 cadrage ✅ S-125 → US-1 config+concatenator+factory unit ✅
+S-126 → US-2 task+wiring+cucumber ✅ S-127.
+
+== Vérification build
+
+- `./gradlew compileKotlin` → BUILD SUCCESSFUL (UP-TO-DATE, baseline S-124 préservée)
+- `git status` → propre (seul `capsule-plugin/slides/` non tracké — dogfooding artefact)
+- Zéro code modifié — session gouvernance pure (pattern S-057/S-063)
+
+== Clôture
+
+Étape 1 (rapport session) ✅. Prochaines étapes : MàJ BACKLOG section CAP-PODCAST
+refondue, INDEX en-tête + roadmap + table sessions, PROMPT_REPRISE S-126,
+SESSIONS_HISTORY, vérification finale, commit + push (permission pilote accordée).
