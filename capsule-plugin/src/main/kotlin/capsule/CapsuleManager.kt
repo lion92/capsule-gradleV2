@@ -1,6 +1,12 @@
 package capsule
 
 import capsule.ai.CapsuleLlmService.registerLlmBuildService
+import capsule.chapters.CardRenderer
+import capsule.chapters.CardRendererImpl
+import capsule.chapters.ChapterMarker
+import capsule.chapters.ChapterMarkerImpl
+import capsule.chapters.NoOpCardRenderer
+import capsule.chapters.NoOpChapterMarker
 import capsule.i18n.CapsuleMessages
 import org.gradle.api.Project
 import org.gradle.api.file.ConfigurableFileCollection
@@ -25,6 +31,7 @@ class CapsuleManager(private val project: Project) {
         project.registerGeneratePodcastTask()
         project.registerDistributeCapsuleVideoTask()
         project.registerValidateCapsuleVideoDurationTask()
+        project.registerGenerateCapsuleChaptersTask()
     }
 
     private fun Project.registerExtractSpeakerNotesTask() {
@@ -136,6 +143,35 @@ class CapsuleManager(private val project: Project) {
                     dir.listFiles { f -> f.name.endsWith(".mp3") }?.toList() ?: emptyList()
                 }
             })
+        }
+    }
+
+    private fun Project.registerGenerateCapsuleChaptersTask() {
+        val lang = CapsuleMessages.resolveLanguage(this)
+        val capsuleExt = project.extensions.findByType(CapsuleExtension::class.java)
+        tasks.register(
+            "generateCapsuleChapters",
+            capsule.chapters.GenerateCapsuleChaptersTask::class.java,
+        ) { task ->
+            task.group = CapsuleMessages.get("task.group.generate", lang)
+            task.description = CapsuleMessages.get("task.generateCapsuleChapters.description", lang)
+            task.enabled.convention(project.provider {
+                capsuleExt?.chaptersEnabled?.get()
+                    ?: project.findProperty("capsule.chapters.enabled")?.toString()?.toBoolean()
+                    ?: false
+            })
+            task.introText.convention(project.provider {
+                capsuleExt?.chaptersIntroText?.orNull
+                    ?: project.findProperty("capsule.chapters.introText")?.toString()
+                    ?: ""
+            })
+            task.outroText.convention(project.provider {
+                capsuleExt?.chaptersOutroText?.orNull
+                    ?: project.findProperty("capsule.chapters.outroText")?.toString()
+                    ?: ""
+            })
+            task.slideSegmentsJson.set("[]")
+            task.outputDir.convention(project.layout.buildDirectory.dir("capsule/chapters"))
         }
     }
 
@@ -548,6 +584,31 @@ class CapsuleManager(private val project: Project) {
                 StrictModeGuard.requireAvailable(strict, "ffmpeg (podcast concat)", false, ffmpegPath)
                 capsule.podcast.NoOpPodcastConcatenator()
             }
+        }
+
+        /**
+         * 9th factory — chapter marker metadata file writer.
+         *
+         * - noop → [NoOpChapterMarker] (writes empty JSON)
+         * - otherwise → [ChapterMarkerImpl] (always available — disk write only, no ffmpeg)
+         * - strict has no effect here (disk write always succeeds)
+         */
+        @JvmStatic
+        fun resolveChapterMarker(ffmpegPath: String = "ffmpeg", strict: Boolean = false): ChapterMarker {
+            if (ffmpegPath == "noop") return NoOpChapterMarker()
+            return ChapterMarkerImpl(ffmpegPath)
+        }
+
+        /**
+         * 10th factory — card renderer for intro/outro chapter cards.
+         *
+         * - noop → [NoOpCardRenderer] (writes no-op HTML placeholder)
+         * - otherwise → [CardRendererImpl] (always available — disk write + HTML generation, no external deps)
+         */
+        @JvmStatic
+        fun resolveCardRenderer(ffmpegPath: String = "ffmpeg", strict: Boolean = false): CardRenderer {
+            if (ffmpegPath == "noop") return NoOpCardRenderer()
+            return CardRendererImpl()
         }
 
         fun readScriptFiles(dir: File): List<File> {

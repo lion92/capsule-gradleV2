@@ -1,6 +1,7 @@
 package capsule
 
 import capsule.audio.AudioPostConfig
+import capsule.chapters.ChaptersConfig
 import capsule.podcast.PodcastConfig
 import capsule.preview.PreviewConfig
 import capsule.transcript.TranscriptConfig
@@ -1800,5 +1801,156 @@ class CapsuleConfigMergerTest {
         )
         val config = CapsuleConfigMerger.loadFromGradleProperties(projectDir)
         assertEquals(true, config.preview.enabled, "loadFromGradleProperties should read preview.enabled")
+    }
+
+    // ─── ChaptersConfig (CAP-CHAPITRE US-0) ──────────────────────
+    //
+    // 4 fields: enabled (Bool=false), introText (Str=""),
+    // outroText (Str=""), outputDir (Str="").
+    // All defaults disabled/empty to preserve backward compat — existing
+    // configs without a `chapters` section keep the no-chapters behavior.
+
+    @Test
+    fun `default merge has chapters disabled with empty fields`() {
+        val projectDir = File(tempDir, "chapters-default").also { it.mkdirs() }
+        val merged = CapsuleConfigMerger.merge(projectDir, CapsuleConfig(), emptyMap())
+        assertEquals(false, merged.chapters.enabled, "chapters.enabled should default to false")
+        assertEquals("", merged.chapters.introText, "chapters.introText should default to empty")
+        assertEquals("", merged.chapters.outroText, "chapters.outroText should default to empty")
+        assertEquals("", merged.chapters.outputDir, "chapters.outputDir should default to empty")
+    }
+
+    @Test
+    fun `chapters is read from YAML`() {
+        val projectDir = File(tempDir, "chapters-yaml").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            chapters = ChaptersConfig(enabled = true, introText = "Welcome", outroText = "Goodbye", outputDir = "chapters/")
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals(true, merged.chapters.enabled, "YAML chapters.enabled should be honored")
+        assertEquals("Welcome", merged.chapters.introText, "YAML chapters.introText should be honored")
+        assertEquals("Goodbye", merged.chapters.outroText, "YAML chapters.outroText should be honored")
+        assertEquals("chapters/", merged.chapters.outputDir, "YAML chapters.outputDir should be honored")
+    }
+
+    @Test
+    fun `chapters CLI overrides YAML`() {
+        val projectDir = File(tempDir, "chapters-cli-over-yaml").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            chapters = ChaptersConfig(enabled = false, introText = "YAML Intro", outroText = "YAML Outro")
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, yamlConfig, mapOf(
+                "chapters.enabled" to "true",
+                "chapters.introText" to "CLI Intro",
+                "chapters.outroText" to "CLI Outro"
+            )
+        )
+        assertEquals(true, merged.chapters.enabled, "CLI true should override YAML false")
+        assertEquals("CLI Intro", merged.chapters.introText, "CLI introText should override YAML")
+        assertEquals("CLI Outro", merged.chapters.outroText, "CLI outroText should override YAML")
+    }
+
+    @Test
+    fun `chapters is read from gradle properties`() {
+        val projectDir = File(tempDir, "chapters-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.chapters.enabled=true
+            capsule.chapters.introText=Props Intro
+            capsule.chapters.outroText=Props Outro
+            capsule.chapters.outputDir=props/chapters/
+            """.trimIndent()
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, CapsuleConfig(), emptyMap(), yamlLoaded = false)
+        assertEquals(true, merged.chapters.enabled, "props chapters.enabled should be honored")
+        assertEquals("Props Intro", merged.chapters.introText, "props chapters.introText should be honored")
+        assertEquals("Props Outro", merged.chapters.outroText, "props chapters.outroText should be honored")
+        assertEquals("props/chapters/", merged.chapters.outputDir, "props chapters.outputDir should be honored")
+    }
+
+    @Test
+    fun `chapters YAML overrides gradle properties`() {
+        val projectDir = File(tempDir, "chapters-yaml-over-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.chapters.enabled=false
+            capsule.chapters.introText=Props Intro
+            """.trimIndent()
+        )
+        val yamlConfig = CapsuleConfig(
+            chapters = ChaptersConfig(enabled = true, introText = "YAML Intro")
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals(true, merged.chapters.enabled, "YAML should override props")
+        assertEquals("YAML Intro", merged.chapters.introText, "YAML should override props")
+    }
+
+    @Test
+    fun `chapters CLI overrides gradle properties when no YAML`() {
+        val projectDir = File(tempDir, "chapters-cli-over-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.chapters.enabled=false
+            """.trimIndent()
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, CapsuleConfig(), mapOf("chapters.enabled" to "true")
+        )
+        assertEquals(true, merged.chapters.enabled, "CLI should override props when no YAML")
+    }
+
+    @Test
+    fun `chapters partial CLI override preserves non-overridden YAML fields`() {
+        val projectDir = File(tempDir, "chapters-partial-cli").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            chapters = ChaptersConfig(enabled = true, introText = "YAML Intro", outroText = "YAML Outro")
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, yamlConfig, mapOf("chapters.enabled" to "false")
+        )
+        assertEquals(false, merged.chapters.enabled, "CLI overrides enabled only")
+        assertEquals("YAML Intro", merged.chapters.introText, "YAML introText preserved when CLI absent")
+        assertEquals("YAML Outro", merged.chapters.outroText, "YAML outroText preserved when CLI absent")
+    }
+
+    @Test
+    fun `loadFromEnvironment default chapters is disabled`() {
+        val config = CapsuleConfigMerger.loadFromEnvironment()
+        assertEquals(false, config.chapters.enabled, "env default chapters.enabled should be false")
+        assertEquals("", config.chapters.introText, "env default chapters.introText should be empty")
+        assertEquals("", config.chapters.outroText, "env default chapters.outroText should be empty")
+        assertEquals("", config.chapters.outputDir, "env default chapters.outputDir should be empty")
+    }
+
+    @Test
+    fun `loadFromGradleProperties reads capsule chapters section`() {
+        val projectDir = File(tempDir, "chapters-props-load").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.chapters.enabled=true
+            capsule.chapters.introText=Hello
+            capsule.chapters.outroText=Bye
+            capsule.chapters.outputDir=out/chapters/
+            """.trimIndent()
+        )
+        val config = CapsuleConfigMerger.loadFromGradleProperties(projectDir)
+        assertEquals(true, config.chapters.enabled, "loadFromGradleProperties should read chapters.enabled")
+        assertEquals("Hello", config.chapters.introText, "loadFromGradleProperties should read chapters.introText")
+        assertEquals("Bye", config.chapters.outroText, "loadFromGradleProperties should read chapters.outroText")
+        assertEquals("out/chapters/", config.chapters.outputDir, "loadFromGradleProperties should read chapters.outputDir")
+    }
+
+    @Test
+    fun `chapters blank introText YAML falls back to props`() {
+        val projectDir = File(tempDir, "chapters-blank-yaml").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.chapters.introText=Props Intro
+            """.trimIndent()
+        )
+        val yamlConfig = CapsuleConfig(chapters = ChaptersConfig(introText = ""))
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals("Props Intro", merged.chapters.introText, "Blank YAML introText should fall back to props")
     }
 }

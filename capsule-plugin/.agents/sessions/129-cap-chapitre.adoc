@@ -1,0 +1,94 @@
+= Session 129 — CAP-CHAPITRE (EPIC terminé 5/5 US)
+_Du_ 2026-08-26 _au_ 2026-08-26
+_Borough_ : Détroit (capsule-gradle)
+
+== Objectif
+
+EPIC CAP-CHAPITRE : intro/outro cards + chapter markers Matroska (5 US ~10 pts).
+Divisé en baby-steps TDD/BDD strict : US-0 config → US-1 chapter markers → US-2 card renderer → US-3 task + wiring → US-4 Cucumber BDD.
+
+== Résultat
+
+*EPIC CAP-CHAPITRE TERMINÉ 5/5 US.*
+
+=== US-0 — ChaptersConfig (baby-step config)
+- `ChaptersConfig.kt` — data class 4 champs (enabled, introText, outroText, outputDir)
+- `CapsuleConfig.kt` — 15e section `chapters`
+- `CapsuleConfigMerger.kt` — `mergeChaptersConfig()` 4 sources (ENV < props < YAML < CLI)
+- `CapsuleExtension.kt` — DSL properties chapters*
+- `CapsulePlugin.kt` — push guards
+- Tests : 10 unit `CapsuleConfigMergerTest` chapters PASSED
+
+=== US-1 — ChapterMarker interface/Impl/NoOp + factory 9e
+- `ChapterMarker.kt` — interface `format(chapters, outputFile): Boolean` + `ChapterEntry` data class
+- `ChapterMetadataCommand.kt` — object pur `buildJson(chapters): String`
+- `ChapterMarkerImpl.kt` — écriture JSON disque
+- `NoOpChapterMarker.kt` — fallback dégradé
+- `CapsuleManager.kt` — `resolveChapterMarker` 9e factory
+- Tests : 19 unit `ChapterMarkerTest` PASSED
+
+=== US-2 — CardRenderer interface/Impl/NoOp + factory 10e
+- `CardRenderer.kt` — interface `renderIntroCard/renderOutroCard` + `CardRendererCommand` object pur (HTML template inline CSS 1920×1080)
+- `CardRendererImpl.kt` — écriture HTML disque
+- `NoOpCardRenderer.kt` — fallback dégradé
+- `CapsuleManager.kt` — `resolveCardRenderer` 10e factory
+- Tests : 18 unit `CardRendererTest` PASSED
+
+=== US-3 — GenerateCapsuleChaptersTask + wiring
+- `GenerateCapsuleChaptersTask.kt` — task Gradle `generateCapsuleChapters` (open class, 4 inputs, 1 output dir)
+- `ChapterEntryParser.kt` — parsing JSON segments + build chapter entries (object pur testable)
+- `CapsuleManager.kt` — `registerGenerateCapsuleChaptersTask` + `CapsuleMessages` 34e key
+- Tests : 10 unit `ChapterEntryParserTest` PASSED
+
+=== US-4 — Cucumber BDD 3 scénarios @chapters
+- `capsule_chapters.feature` — 3 scénarios (disabled default, DSL enabled, gradle property custom text)
+- `CapsuleChaptersSteps.kt` — steps préfixés "chapters" (bug S-088)
+- `CapsuleChaptersCucumberRunner.kt` — runner dédié 19e pattern S-082
+- `build.gradle.kts` — `CucumberTaskSpec("cucumberTestChapters")` 19e
+- Tests : 3/3 Cucumber PASSED
+
+=== Baseline
+- Unit tests : 1034 → 1063 (+29 net)
+- Cucumber runners : 18 → 19 (CAP-CHAPITRE)
+- Functional : inchangé 75
+- Domaines DDD : 14 → 16 (`capsule.chapters` + `capsule.cards`)
+- Factories `resolve*` : 8 → 10 (`resolveChapterMarker` + `resolveCardRenderer`)
+
+== Fichiers créés (6 prod + 4 test + 1 feature)
+
+Prod :
+- `src/main/kotlin/capsule/chapters/ChaptersConfig.kt`
+- `src/main/kotlin/capsule/chapters/ChapterMarker.kt`
+- `src/main/kotlin/capsule/chapters/CardRenderer.kt`
+- `src/main/kotlin/capsule/chapters/ChapterEntryParser.kt`
+- `src/main/kotlin/capsule/chapters/GenerateCapsuleChaptersTask.kt`
+
+Test :
+- `src/test/kotlin/capsule/chapters/ChapterMarkerTest.kt`
+- `src/test/kotlin/capsule/chapters/CardRendererTest.kt`
+- `src/test/kotlin/capsule/chapters/ChapterEntryParserTest.kt`
+- `src/test/kotlin/capsule/scenarios/CapsuleChaptersCucumberRunner.kt`
+- `src/test/kotlin/capsule/scenarios/CapsuleChaptersSteps.kt`
+- `src/test/features/capsule_chapters.feature`
+
+== Fichiers modifiés (6)
+
+- `CapsuleConfig.kt` — ajout 15e section `chapters`
+- `CapsuleConfigMerger.kt` — ajout `mergeChaptersConfig()` + ENV/props
+- `CapsuleExtension.kt` — DSL properties chapters*
+- `CapsulePlugin.kt` — push guards chapters
+- `CapsuleManager.kt` — factories 9e/10e + task registration
+- `Messages_en.properties` — 34e key
+- `build.gradle.kts` — CucumberTaskSpec 19e
+
+== Décisions techniques
+
+1. `open class` au lieu de `abstract class` pour la task Gradle — résout le problème de décoration Gradle (abstract task + TestKit)
+2. `ChapterEntryParser` extrait en objet pur séparé — testable sans Gradle, parsing JSON robuste avec regex `}\\s*,\\s*\\{`
+3. Card HTML inline CSS 1920×1080 — pas de fichier CSS externe, template autonome pour Playwright capture
+4. Pas de `dependsOn("generateCapsuleContent")` — chapters indépendant du pipeline LLM
+5. Factory 9e/10e inline dans la task (pas CapsuleManager) — évite la dépendance statique
+
+== Prochaine session
+
+130 — Maintenance ou nouvel EPIC P2 (CAP-CHAPITRE terminé, reste P2 : CAP-PODCAST, CAP-28, CAP-CR3-4).

@@ -195,6 +195,16 @@ cucumberConventions {
             runnerClass = "capsule.scenarios.CapsulePreviewCucumberRunner",
             timeoutMinutes = 15,
         ),
+        // CAP-CHAPITRE — chapter markers + intro/outro cards.
+        // Dedicated runner pattern S-082; steps prefixed "chapters" (bug S-088).
+        // Validates DSL wiring via GradleRunner; no Playwright or FFmpeg needed.
+        CucumberTaskSpec(
+            name = "cucumberTestChapters",
+            features = listOf("src/test/features/capsule_chapters.feature"),
+            tags = listOf("@chapters"),
+            runnerClass = "capsule.scenarios.CapsuleChaptersCucumberRunner",
+            timeoutMinutes = 15,
+        ),
         // Integration cucumber run — scenarios tagged @integration or @manim
         // (burn-in E2E with real ffmpeg, Manim pipeline NoOp). Excluded from the
         // default cucumberTest runner by `not @integration`; this dedicated task

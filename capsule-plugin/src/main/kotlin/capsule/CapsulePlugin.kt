@@ -220,5 +220,16 @@ class CapsulePlugin : Plugin<Project> {
         if (!ext.previewOnly.isPresent || ext.previewOnly.get() == conventions.previewOnly) {
             ext.previewOnly.set(config.preview.enabled)
         }
+
+        // Chapters section (CAP-CHAPITRE)
+        if (!ext.chaptersEnabled.isPresent || ext.chaptersEnabled.get() == conventions.chaptersEnabled) {
+            ext.chaptersEnabled.set(config.chapters.enabled)
+        }
+        if (!ext.chaptersIntroText.isPresent || ext.chaptersIntroText.get() == conventions.chaptersIntroText) {
+            ext.chaptersIntroText.set(config.chapters.introText)
+        }
+        if (!ext.chaptersOutroText.isPresent || ext.chaptersOutroText.get() == conventions.chaptersOutroText) {
+            ext.chaptersOutroText.set(config.chapters.outroText)
+        }
     }
 }

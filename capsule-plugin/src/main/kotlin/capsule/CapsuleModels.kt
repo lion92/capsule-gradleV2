@@ -224,6 +224,18 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
     val previewOnly: Property<Boolean> = objects.property(Boolean::class.java)
         .convention(false)
 
+    /** CAP-CHAPITRE — `true` to generate Matroska chapter metadata and optional intro/outro cards. Defaults to false (opt-in). */
+    val chaptersEnabled: Property<Boolean> = objects.property(Boolean::class.java)
+        .convention(false)
+
+    /** CAP-CHAPITRE — custom text for the intro card title (default `""` — uses deck name). */
+    val chaptersIntroText: Property<String> = objects.property(String::class.java)
+        .convention("")
+
+    /** CAP-CHAPITRE — custom text for the outro card title (default `""` — uses "Thank you"). */
+    val chaptersOutroText: Property<String> = objects.property(String::class.java)
+        .convention("")
+
     internal val conventions: CapsuleConventions = CapsuleConventions(
         outputDir = "capsule",
         sliderScriptDir = "capsule",
@@ -276,7 +288,10 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
         remotionFps = 30,
         podcastEnabled = false,
         podcastOutputFile = "",
-        previewOnly = false
+        previewOnly = false,
+        chaptersEnabled = false,
+        chaptersIntroText = "",
+        chaptersOutroText = ""
     )
 }
 
@@ -332,5 +347,8 @@ data class CapsuleConventions(
     val remotionFps: Int,
     val podcastEnabled: Boolean,
     val podcastOutputFile: String,
-    val previewOnly: Boolean
+    val previewOnly: Boolean,
+    val chaptersEnabled: Boolean,
+    val chaptersIntroText: String,
+    val chaptersOutroText: String
 )

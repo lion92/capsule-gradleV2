@@ -5,10 +5,10 @@ _Règles absolues_ : voir `AGENT.adoc`
 _DAG_ : N2 — Plugin Gradle de generation de capsules video
 _Dependance N2_ : slider-gradle (compileOnly dans build.gradle.kts, runtime apply dans CapsulePlugin)
 
-_Derniere mise a jour_ : 2026-08-26 (S-128 clôture EPIC CAP-PREVIEW)
-_Session terminee_ : 128 — **CAP-PREVIEW 3/3 US** — `PreviewConfig` (14e section) + `mergePreviewConfig` 4 sources + `ScreenshotCaptureImpl` previewOnly short-circuit + Guards `captureDeckSequential`/`captureDeckParallel` + Cucumber `capsule_preview.feature` 3 scénarios `@preview` + runner dédié 18e `cucumberTestPreview` + `PreviewExtensionFunctionalTest` 3 tests. 1034 unit VERT (+11 net), 75 functional VERT (+3 net), 3 cucumber PASSED. EPIC CAP-PREVIEW TERMINÉ. Domaine `capsule.preview` (14e) clos.
-_Prochaine session_ : 129 — CAP-CHAPITRE (intro/outro + chapter markers, 5 US ~10 pts).
-_Session en cours_ : — (S-128 terminée).
+_Derniere mise a jour_ : 2026-08-26 (S-129 clôture EPIC CAP-CHAPITRE)
+_Session terminee_ : 129 — **CAP-CHAPITRE 5/5 US** — `ChaptersConfig` (15e section) + `mergeChaptersConfig` 4 sources + `ChapterMarker` interface/Impl/NoOp + `CardRenderer` interface/Impl/NoOp + `GenerateCapsuleChaptersTask` + `ChapterEntryParser` + factories 9e/10e + Cucumber `capsule_chapters.feature` 3 scénarios `@chapters` + runner dédié 19e `cucumberTestChapters`. 1063 unit VERT (+29 net), 75 functional VERT, 3 cucumber PASSED. EPIC CAP-CHAPITRE TERMINÉ. Domaines `capsule.chapters` (15e) + `capsule.cards` (16e) clos.
+_Prochaine session_ : 130 — Maintenance ou nouvel EPIC P2.
+_Session en cours_ : — (S-129 terminée).
 
 '''
 == REGLES ABSOLUES (resume)
@@ -110,3 +110,8 @@ _Details EPICs terminés_ : rapports dans `.agents/sessions/`, détails archivé
 
 _Total_ : 25 EPICs terminés + 2 EPICs TODO. _Baseline courante_ :
 1034 unit VERT, 75 functional VERT, 18 cucumber dédiés GREEN.
+
+_Décision architecture_ : Docker FFmpeg reporté MVP1 (fausse bonne idée
+pour MVP0 — gain fonctionnel nul, complexité ajoutée). FFmpeg reste local
+via `ProcessBuilder`. KINSHASA (`container-provision-gradle`) disponible
+pour MVP1 si besoin.

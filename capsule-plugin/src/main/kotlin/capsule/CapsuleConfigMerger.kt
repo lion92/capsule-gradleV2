@@ -1,6 +1,7 @@
 package capsule
 
 import capsule.audio.AudioPostConfig
+import capsule.chapters.ChaptersConfig
 import capsule.podcast.PodcastConfig
 import capsule.preview.PreviewConfig
 import capsule.transcript.TranscriptConfig
@@ -46,7 +47,8 @@ object CapsuleConfigMerger {
             transcript = mergeTranscriptConfig(envConfig.transcript, propertiesConfig.transcript, yaml?.transcript, cliParams),
             remotion = mergeRemotionConfig(envConfig.remotion, propertiesConfig.remotion, yaml?.remotion, cliParams),
             podcast = mergePodcastConfig(envConfig.podcast, propertiesConfig.podcast, yaml?.podcast, cliParams),
-            preview = mergePreviewConfig(envConfig.preview, propertiesConfig.preview, yaml?.preview, cliParams)
+            preview = mergePreviewConfig(envConfig.preview, propertiesConfig.preview, yaml?.preview, cliParams),
+            chapters = mergeChaptersConfig(envConfig.chapters, propertiesConfig.chapters, yaml?.chapters, cliParams)
         )
     }
 
@@ -170,6 +172,12 @@ object CapsuleConfigMerger {
             ),
             preview = PreviewConfig(
                 enabled = env["CAPSULE_PREVIEW_ENABLED"]?.toBoolean() ?: false
+            ),
+            chapters = ChaptersConfig(
+                enabled = env["CAPSULE_CHAPTERS_ENABLED"]?.toBoolean() ?: false,
+                introText = env["CAPSULE_CHAPTERS_INTRO_TEXT"] ?: "",
+                outroText = env["CAPSULE_CHAPTERS_OUTRO_TEXT"] ?: "",
+                outputDir = env["CAPSULE_CHAPTERS_OUTPUT_DIR"] ?: ""
             )
         )
     }
@@ -262,6 +270,12 @@ object CapsuleConfigMerger {
             ),
             preview = PreviewConfig(
                 enabled = props["capsule.preview.enabled"]?.toBoolean() ?: false
+            ),
+            chapters = ChaptersConfig(
+                enabled = props["capsule.chapters.enabled"]?.toBoolean() ?: false,
+                introText = props["capsule.chapters.introText"] ?: "",
+                outroText = props["capsule.chapters.outroText"] ?: "",
+                outputDir = props["capsule.chapters.outputDir"] ?: ""
             )
         )
     }
@@ -401,6 +415,15 @@ object CapsuleConfigMerger {
     private fun mergePreviewConfig(env: PreviewConfig, props: PreviewConfig, yaml: PreviewConfig?, cli: Map<String, Any?>): PreviewConfig {
         return PreviewConfig(
             enabled = mergeBoolean(cli, "preview.enabled", yaml?.enabled, props.enabled)
+        )
+    }
+
+    private fun mergeChaptersConfig(env: ChaptersConfig, props: ChaptersConfig, yaml: ChaptersConfig?, cli: Map<String, Any?>): ChaptersConfig {
+        return ChaptersConfig(
+            enabled = mergeBoolean(cli, "chapters.enabled", yaml?.enabled, props.enabled),
+            introText = mergeStr(cli, "chapters.introText", yaml?.introText, props.introText, env.introText),
+            outroText = mergeStr(cli, "chapters.outroText", yaml?.outroText, props.outroText, env.outroText),
+            outputDir = mergeStr(cli, "chapters.outputDir", yaml?.outputDir, props.outputDir, env.outputDir)
         )
     }
 

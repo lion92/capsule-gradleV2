@@ -38,11 +38,10 @@
 | ✅ TERMINÉ (S-128) — US-0 ✅ S-128, US-1 ✅ S-128, US-2 ✅ S-128
 
 | CAP-CHAPITRE
-| **Intro/outro + chapter markers** — `CardRenderer` PNG, `ChapterMarkers`
-  Matroska tags depuis `SlideSegment.titles`. Domaines `capsule.cards`/
-  `capsule.chapters`. 5 US ~10 pts.
+| **Intro/outro + chapter markers** — `CardRenderer` HTML 1920×1080, `ChapterMarker`
+  JSON timestamps. Domaines `capsule.cards`/`capsule.chapters`. 5 US ~10 pts.
 | P2
-| ⬜ TODO
+| ✅ TERMINÉ (S-129) — US-0 ✅ S-129, US-1 ✅ S-129, US-2 ✅ S-129, US-3 ✅ S-129, US-4 ✅ S-129
 
 | CAP-CR3-4
 | **Convention Gradle `resolveScriptDir/resolveDeckDir`** — `CapsuleManager.kt:234-254`
@@ -100,36 +99,44 @@ Rapports par US dans `.agents/sessions/`._
 | CAP-AUDIO | Post-production audio BGM+loudnorm | 5 | ✅ TERMINÉ (S-106)
 | CAP-ANIM | Remotion capture strategy | 3 | ✅ TERMINÉ (S-122)
 | CAP-PODCAST | Extraction audio-only podcast MP3 | 3 | ✅ TERMINÉ (S-127)
+| CAP-PREVIEW | Mode dry-run previewOnly | 3 | ✅ TERMINÉ (S-128)
 | SLD-11 | Expulsion slider.capsule → capsule.feed | 6 | ✅ TERMINÉ (S-058)
 | CAP-0→CAP-12 | Bootstrap → split CapsuleManager | — | ✅ TERMINÉ
 |===
 
-_Total_ : 24 EPICs terminés + 3 EPICs TODO. _Baseline courante_ :
-1023 unit VERT, 72 functional VERT, cucumber dédiés GREEN (17
+_Total_ : 25 EPICs terminés + 2 EPICs TODO. _Baseline courante_ :
+1034 unit VERT, 75 functional VERT, cucumber dédiés GREEN (18
 `CucumberTaskSpec`).
 
 '''
 == Points d'attention
 
-* 1023 unit VERT (S-127 baseline), 72 functional VERT, cucumber dédiés GREEN
+* 1034 unit VERT (S-128 baseline), 75 functional VERT, cucumber dédiés GREEN
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
 * Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
   préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
 * English only : code, Gherkin, commentaires
 * Économie d'encre = skip si artefact existe et valide (AGENT.adoc Loi)
-* `build.gradle.kts` restauré S-122 — 17 `CucumberTaskSpec` actifs (18ème
-  `cucumberTestPreview` à câbler CAP-PREVIEW)
+* `build.gradle.kts` — 18 `CucumberTaskSpec` actifs
 * Conventions 0.0.3 (mavenLocal), BOM 0.0.27, codebase 0.0.10, slider 0.0.18
-* 13 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
-  i18n, ci, transcript, remotion, podcast + support. `capsule.podcast` clos S-127.
-* MP3 slides localisation : `build/capsule/<deckName>/slide-XX.mp3` (zero-padded
-  2 digits, produits par `synthesizeTtsForScript` L390)
-* `PodcastConcatCommand` = object pur (pattern `AudioPostCommand`)
+* 14 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
+  i18n, ci, transcript, remotion, podcast, support + preview. `capsule.preview` clos S-128.
+
+== Décisions d'architecture
+
+* *Docker FFmpeg reporté MVP1* — L'invocation FFmpeg reste locale
+  (`ProcessBuilder` direct via `ffmpegExecutablePath`) pour le MVP0.
+  Le provisionnement Docker FFmpeg via KINSHASA (`container-provision-gradle`)
+  est un candidat MVP1 (reproductibilité, CI/CD, isolation), mais c'est une
+  fausse bonne idée pour MVP0 : ça ajoute une couche de complexité sans
+  gain fonctionnel immédiat. Le pipeline formation doit d'abord être livré.
+  Voir aussi : `container-provision-gradle` (KINSHASA, N0) pour l'infra
+  Docker cross-borough existante.
 
 == Rappels
 
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 1023 unit VERT (S-127 baseline), 72 functional VERT, cucumber dédiés GREEN
+* 1034 unit VERT (S-128 baseline), 75 functional VERT, cucumber dédiés GREEN
 * `cucumberTest` skippé par défaut (CR-10), `cucumberTestIntegration` skippé
   par défaut (Playwright gate S-121)
 * DSL 4 sources pattern : ENV < props < YAML < CLI
@@ -139,3 +146,4 @@ _Total_ : 24 EPICs terminés + 3 EPICs TODO. _Baseline courante_ :
   RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder)
 * Catalogue : `slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27
 * CAP-PREVIEW = mode dry-run (previewOnly → PNG only, skip mux WebM)
+* FFmpeg = local ProcessBuilder (pas Docker). Docker FFmpeg reporté MVP1.
