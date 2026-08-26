@@ -2,6 +2,7 @@ package capsule
 
 import capsule.audio.AudioPostConfig
 import capsule.podcast.PodcastConfig
+import capsule.preview.PreviewConfig
 import capsule.transcript.TranscriptConfig
 import capsule.transcript.TranscriptStrategy
 import org.gradle.testfixtures.ProjectBuilder
@@ -1707,5 +1708,97 @@ class CapsuleConfigMergerTest {
         val config = CapsuleConfigMerger.loadFromGradleProperties(projectDir)
         assertEquals(true, config.podcast.enabled, "loadFromGradleProperties should read podcast.enabled")
         assertEquals("/props/podcast.mp3", config.podcast.outputFile, "loadFromGradleProperties should read podcast.outputFile")
+    }
+
+    // ─── Preview section (CAP-PREVIEW) ────────────────────────────────
+
+    @Test
+    fun `default merge has preview disabled`() {
+        val projectDir = File(tempDir, "preview-default").also { it.mkdirs() }
+        val merged = CapsuleConfigMerger.merge(projectDir, CapsuleConfig(), emptyMap())
+        assertEquals(false, merged.preview.enabled, "preview.enabled should default to false")
+    }
+
+    @Test
+    fun `preview is read from YAML`() {
+        val projectDir = File(tempDir, "preview-yaml").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            preview = PreviewConfig(enabled = true)
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals(true, merged.preview.enabled, "YAML preview.enabled should be honored")
+    }
+
+    @Test
+    fun `preview CLI overrides YAML`() {
+        val projectDir = File(tempDir, "preview-cli-over-yaml").also { it.mkdirs() }
+        val yamlConfig = CapsuleConfig(
+            preview = PreviewConfig(enabled = false)
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, yamlConfig,
+            mapOf("preview.enabled" to "true")
+        )
+        assertEquals(true, merged.preview.enabled, "CLI true should override YAML false")
+    }
+
+    @Test
+    fun `preview is read from gradle properties`() {
+        val projectDir = File(tempDir, "preview-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.preview.enabled=true
+            """.trimIndent()
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, CapsuleConfig(), emptyMap(), yamlLoaded = false)
+        assertEquals(true, merged.preview.enabled, "props capsule.preview.enabled should be honored")
+    }
+
+    @Test
+    fun `preview YAML overrides gradle properties`() {
+        val projectDir = File(tempDir, "preview-yaml-over-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.preview.enabled=false
+            """.trimIndent()
+        )
+        val yamlConfig = CapsuleConfig(
+            preview = PreviewConfig(enabled = true)
+        )
+        val merged = CapsuleConfigMerger.merge(projectDir, yamlConfig, emptyMap())
+        assertEquals(true, merged.preview.enabled, "YAML should override props")
+    }
+
+    @Test
+    fun `preview CLI overrides gradle properties when no YAML`() {
+        val projectDir = File(tempDir, "preview-cli-over-props").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.preview.enabled=false
+            """.trimIndent()
+        )
+        val merged = CapsuleConfigMerger.merge(
+            projectDir, CapsuleConfig(),
+            mapOf("preview.enabled" to "true")
+        )
+        assertEquals(true, merged.preview.enabled, "CLI should override props when no YAML")
+    }
+
+    @Test
+    fun `loadFromEnvironment default preview is disabled`() {
+        val config = CapsuleConfigMerger.loadFromEnvironment()
+        assertEquals(false, config.preview.enabled, "env default preview.enabled should be false")
+    }
+
+    @Test
+    fun `loadFromGradleProperties reads capsule preview section`() {
+        val projectDir = File(tempDir, "preview-props-load").also { it.mkdirs() }
+        File(projectDir, "gradle.properties").writeText(
+            """
+            capsule.preview.enabled=true
+            """.trimIndent()
+        )
+        val config = CapsuleConfigMerger.loadFromGradleProperties(projectDir)
+        assertEquals(true, config.preview.enabled, "loadFromGradleProperties should read preview.enabled")
     }
 }

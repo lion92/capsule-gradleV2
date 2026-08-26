@@ -2,6 +2,7 @@ package capsule
 
 import capsule.audio.AudioPostConfig
 import capsule.podcast.PodcastConfig
+import capsule.preview.PreviewConfig
 import capsule.transcript.TranscriptConfig
 import capsule.transcript.TranscriptStrategy
 import java.io.File
@@ -44,7 +45,8 @@ object CapsuleConfigMerger {
             audioPost = mergeAudioPostConfig(envConfig.audioPost, propertiesConfig.audioPost, yaml?.audioPost, cliParams),
             transcript = mergeTranscriptConfig(envConfig.transcript, propertiesConfig.transcript, yaml?.transcript, cliParams),
             remotion = mergeRemotionConfig(envConfig.remotion, propertiesConfig.remotion, yaml?.remotion, cliParams),
-            podcast = mergePodcastConfig(envConfig.podcast, propertiesConfig.podcast, yaml?.podcast, cliParams)
+            podcast = mergePodcastConfig(envConfig.podcast, propertiesConfig.podcast, yaml?.podcast, cliParams),
+            preview = mergePreviewConfig(envConfig.preview, propertiesConfig.preview, yaml?.preview, cliParams)
         )
     }
 
@@ -165,6 +167,9 @@ object CapsuleConfigMerger {
             podcast = PodcastConfig(
                 enabled = env["CAPSULE_PODCAST_ENABLED"]?.toBoolean() ?: false,
                 outputFile = env["CAPSULE_PODCAST_OUTPUT_FILE"] ?: ""
+            ),
+            preview = PreviewConfig(
+                enabled = env["CAPSULE_PREVIEW_ENABLED"]?.toBoolean() ?: false
             )
         )
     }
@@ -254,6 +259,9 @@ object CapsuleConfigMerger {
             podcast = PodcastConfig(
                 enabled = props["capsule.podcast.enabled"]?.toBoolean() ?: false,
                 outputFile = props["capsule.podcast.outputFile"] ?: ""
+            ),
+            preview = PreviewConfig(
+                enabled = props["capsule.preview.enabled"]?.toBoolean() ?: false
             )
         )
     }
@@ -387,6 +395,12 @@ object CapsuleConfigMerger {
         return PodcastConfig(
             enabled = mergeBoolean(cli, "podcast.enabled", yaml?.enabled, props.enabled),
             outputFile = mergeStr(cli, "podcast.outputFile", yaml?.outputFile, props.outputFile, env.outputFile)
+        )
+    }
+
+    private fun mergePreviewConfig(env: PreviewConfig, props: PreviewConfig, yaml: PreviewConfig?, cli: Map<String, Any?>): PreviewConfig {
+        return PreviewConfig(
+            enabled = mergeBoolean(cli, "preview.enabled", yaml?.enabled, props.enabled)
         )
     }
 

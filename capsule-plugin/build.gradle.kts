@@ -184,6 +184,17 @@ cucumberConventions {
             runnerClass = "capsule.scenarios.CapsulePodcastCucumberRunner",
             timeoutMinutes = 30,
         ),
+        // CAP-PREVIEW US-2 — dry-run mode (previewOnly → PNG only, skip mux/audio/format).
+        // Dedicated runner pattern S-082; steps prefixed "preview" (bug S-088 glue
+        // capsule.scenarios shared). Validates DSL wiring via GradleRunner help task;
+        // no Playwright or FFmpeg needed.
+        CucumberTaskSpec(
+            name = "cucumberTestPreview",
+            features = listOf("src/test/features/capsule_preview.feature"),
+            tags = listOf("@preview"),
+            runnerClass = "capsule.scenarios.CapsulePreviewCucumberRunner",
+            timeoutMinutes = 15,
+        ),
         // Integration cucumber run — scenarios tagged @integration or @manim
         // (burn-in E2E with real ffmpeg, Manim pipeline NoOp). Excluded from the
         // default cucumberTest runner by `not @integration`; this dedicated task

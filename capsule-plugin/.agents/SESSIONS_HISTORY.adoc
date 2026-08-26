@@ -1,13 +1,15 @@
 = SESSIONS_HISTORY — capsule-gradle
 
 _Date creation_ : 2026-05-14
-_Derniere rotation_ : 2026-08-26 (S-127) — archivage rotatif, sessions 000-117 archivées (voir `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc`). Rapports détaillés dans `.agents/sessions/`.
+_Derniere rotation_ : 2026-08-26 (S-128) — archivage rotatif, sessions 000-118 archivées (voir `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc`). Rapports détaillés dans `.agents/sessions/`.
 
-== 10 dernières sessions (118-127)
+== 10 dernières sessions (119-128)
 
 [cols="1,1,1,3,1"]
 |===
 |# |Date |Type |Sujet |Score
+
+| 128 | 2026-08-26 | tdd+bdd+cloture | **EPIC CAP-PREVIEW TERMINÉ 3/3 US** — `PreviewConfig` (14e section) + `mergePreviewConfig` 4 sources + `ScreenshotCaptureImpl` previewOnly short-circuit + Guards + Cucumber 3 scénarios `@preview` + runner dédié 18e + functional 3 tests. 1034 unit VERT (+11 net), 75 functional VERT (+3 net). Domaine `capsule.preview` (14e) clos. | 9/10
 
 | 127 | 2026-08-26 | feat+bdd+cloture | **CAP-PODCAST US-2** — `GenerateCapsulePodcastTask` (113 lignes) + `CapsuleManager.registerGeneratePodcastTask` (16ème) + `CapsuleMessages` 25ème key (11 properties) + Cucumber `capsule_podcast.feature` 3 scénarios `@podcast` + runner dédié 17ème `cucumberTestPodcast` + `GeneratePodcastFunctionalTest` 3 tests. 1023 unit VERT (+9 i18n), 72 functional VERT (+3). EPIC CAP-PODCAST TERMINÉ 3/3 US. Domaine `capsule.podcast` clos. | 9/10
 
@@ -26,8 +28,6 @@ _Derniere rotation_ : 2026-08-26 (S-127) — archivage rotatif, sessions 000-117
 | 120 | 2026-08-25 | cross-borough | **EPIC MEMPHIS-BOM-FIX US-5** — catalogue capsule fixé `slider`→`slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27. Bug Groovy 3.x conflit ProjectBuilder fixé (retrait `testImplementation(libs.slider)`). 917 tests 0 FAIL. CAP-TRANSCRIPT EPIC TERMINÉ. | 10/10
 
 | 119 | 2026-08-16 | bdd+cloture | **CAP-TRANSCRIPT US-5 Cucumber BDD** — `capsule_transcript.feature` 4 scénarios + runner dédié + steps. BUILD SUCCESSFUL. EPIC CAP-TRANSCRIPT 6/6 US. | 9/10
-
-| 118 | 2026-08-14 | feat+tdd | **CAP-TRANSCRIPT US-4 tâche + wiring** — `GenerateCapsuleTranscriptTask` + `CapsuleManager.registerGenerateTranscriptTask` + `CapsuleMessages` 24ème key. 3 functional GREEN. 917 unit baseline préservée. | 9/10
 |===
 
 == Sessions archivées (000-117) — résumé compact

@@ -1,0 +1,64 @@
+= Session 128 — CAP-PREVIEW mode dry-run (US-0 + US-1 + US-2)
+:session: 128
+:borough: Détroit
+:date: 2026-08-26
+:type: tdd+bdd+cloture
+
+== Résumé
+
+EPIC CAP-PREVIEW 3/3 US terminé — mode dry-run `previewOnly` : capture PNG seulement, skip mux WebM/audio/format.
+
+== US-0 GREEN — PreviewConfig + 14e section + merger + extension (TDD)
+
+* `PreviewConfig` data class (`capsule/preview/PreviewConfig.kt`) — 1 champ `enabled: Boolean = false`.
+* `CapsuleConfig` 14e section : `val preview: PreviewConfig = PreviewConfig()`.
+* `CapsuleConfigMerger` — `mergePreviewConfig` 4 sources (ENV/props/YAML/CLI) + wiring dans `loadFromEnvironment`, `buildConfigFromProperties`, `merge`.
+* `CapsuleModels.kt` — `previewOnly: Property<Boolean>` extension + convention `false`.
+* `CapsulePlugin.kt` — preview block dans `pushConfigIntoExtension`.
+* Tests : `PreviewConfigTest` (3 unit) + `CapsuleConfigMergerTest` (+8 unit).
+* Gate : 1034 unit VERT (+11 net).
+
+== US-1 GREEN — ScreenshotCaptureImpl previewOnly short-circuit (TDD)
+
+* `ScreenshotCaptureImpl` : previewOnly constructor param → après `shootSlides()`, skip `encodeSlides()`+`concatSlides()` (log PREVIEW + return).
+* `CapsuleVideoTask` : previewOnly guard dans `captureDeckSequential` et `captureDeckParallel` — skip audio post + format conversion.
+* Économie d'encre : si PNGs existent + previewOnly → skip capture.
+* `PreviewExtensionFunctionalTest` (3 tests) : DSL default, DSL block, gradle property.
+* Gate : 75 functional VERT (+3 net).
+
+== US-2 GREEN — Cucumber BDD (BDD)
+
+* `capsule_preview.feature` 3 scénarios `@preview` : default full pipeline, previewOnly DSL, previewOnly gradle property.
+* `CapsulePreviewCucumberRunner` dédié 18e `CucumberTaskSpec("cucumberTestPreview")`.
+* `CapsulePreviewSteps` préfixés "preview" (bug S-088).
+* Gate : 3/3 cucumber PASSED.
+
+== Gate final
+
+* unit : 1034 VERT, 0 FAIL
+* functional : 75 VERT, 0 FAIL
+* cucumberTestPreview : 3/3 PASSED
+* `check` complet timeout (>10min) — validé par parties
+
+== Fichiers créés
+
+* `src/main/kotlin/capsule/preview/PreviewConfig.kt`
+* `src/test/kotlin/capsule/PreviewConfigTest.kt`
+* `src/functionalTest/kotlin/capsule/preview/PreviewExtensionFunctionalTest.kt`
+* `src/test/features/capsule_preview.feature`
+* `src/test/kotlin/capsule/scenarios/CapsulePreviewCucumberRunner.kt`
+* `src/test/kotlin/capsule/scenarios/CapsulePreviewSteps.kt`
+
+== Fichiers modifiés
+
+* `CapsuleConfig.kt` — 14e section `preview`
+* `CapsuleConfigMerger.kt` — `mergePreviewConfig` + 3 helpers
+* `CapsuleModels.kt` — `previewOnly` property + convention
+* `CapsulePlugin.kt` — preview block pushConfigIntoExtension
+* `PlaywrightManager.kt` — `ScreenshotCaptureImpl` previewOnly constructor + short-circuit
+* `CapsuleVideoTask.kt` — previewOnly guards + screenshotFactory previewOnly param
+* `build.gradle.kts` — CucumberTaskSpec 18e `cucumberTestPreview`
+
+== EPIC CAP-PREVIEW TERMINÉ 3/3 US
+
+Domaine `capsule.preview` (14e) clos.

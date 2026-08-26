@@ -2,6 +2,7 @@ package capsule
 
 import capsule.audio.AudioPostConfig
 import capsule.podcast.PodcastConfig
+import capsule.preview.PreviewConfig
 import capsule.transcript.TranscriptConfig
 
 /**
@@ -25,7 +26,8 @@ data class CapsuleConfig(
     val audioPost: AudioPostConfig = AudioPostConfig(),
     val transcript: TranscriptConfig = TranscriptConfig(),
     val remotion: RemotionConfig = RemotionConfig(),
-    val podcast: PodcastConfig = PodcastConfig()
+    val podcast: PodcastConfig = PodcastConfig(),
+    val preview: PreviewConfig = PreviewConfig()
 )
 
 data class InputConfig(

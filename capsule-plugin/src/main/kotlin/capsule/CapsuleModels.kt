@@ -220,6 +220,10 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
     val podcastOutputFile: Property<String> = objects.property(String::class.java)
         .convention("")
 
+    /** CAP-PREVIEW — dry-run mode: capture PNG screenshots only, skip FFmpeg encode/concat/video/audio. Defaults to false. */
+    val previewOnly: Property<Boolean> = objects.property(Boolean::class.java)
+        .convention(false)
+
     internal val conventions: CapsuleConventions = CapsuleConventions(
         outputDir = "capsule",
         sliderScriptDir = "capsule",
@@ -271,7 +275,8 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
         remotionConcurrency = 4,
         remotionFps = 30,
         podcastEnabled = false,
-        podcastOutputFile = ""
+        podcastOutputFile = "",
+        previewOnly = false
     )
 }
 
@@ -326,5 +331,6 @@ data class CapsuleConventions(
     val remotionConcurrency: Int,
     val remotionFps: Int,
     val podcastEnabled: Boolean,
-    val podcastOutputFile: String
+    val podcastOutputFile: String,
+    val previewOnly: Boolean
 )

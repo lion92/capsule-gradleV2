@@ -5,10 +5,10 @@ _Règles absolues_ : voir `AGENT.adoc`
 _DAG_ : N2 — Plugin Gradle de generation de capsules video
 _Dependance N2_ : slider-gradle (compileOnly dans build.gradle.kts, runtime apply dans CapsulePlugin)
 
-_Derniere mise a jour_ : 2026-08-26 (S-127 clôture EPIC CAP-PODCAST)
-_Session terminee_ : 127 — **CAP-PODCAST US-2** — `GenerateCapsulePodcastTask` (113 lignes) + `CapsuleManager.registerGeneratePodcastTask` (16ème) + `CapsuleMessages` 25ème key (11 properties) + Cucumber `capsule_podcast.feature` 3 scénarios `@podcast` + runner dédié 17ème `cucumberTestPodcast` + `GeneratePodcastFunctionalTest` 3 tests. 1023 unit VERT (+9 i18n), 72 functional VERT (+3), 17 cucumber dédiés GREEN. EPIC CAP-PODCAST TERMINÉ 3/3 US. Domaine `capsule.podcast` (13ème) clos.
-_Prochaine session_ : 128 — CAP-PREVIEW (mode dry-run `capture.previewOnly` 4 sources + skip mux WebM, 3 US ~4 pts).
-_Session en cours_ : — (S-127 terminée).
+_Derniere mise a jour_ : 2026-08-26 (S-128 clôture EPIC CAP-PREVIEW)
+_Session terminee_ : 128 — **CAP-PREVIEW 3/3 US** — `PreviewConfig` (14e section) + `mergePreviewConfig` 4 sources + `ScreenshotCaptureImpl` previewOnly short-circuit + Guards `captureDeckSequential`/`captureDeckParallel` + Cucumber `capsule_preview.feature` 3 scénarios `@preview` + runner dédié 18e `cucumberTestPreview` + `PreviewExtensionFunctionalTest` 3 tests. 1034 unit VERT (+11 net), 75 functional VERT (+3 net), 3 cucumber PASSED. EPIC CAP-PREVIEW TERMINÉ. Domaine `capsule.preview` (14e) clos.
+_Prochaine session_ : 129 — CAP-CHAPITRE (intro/outro + chapter markers, 5 US ~10 pts).
+_Session en cours_ : — (S-128 terminée).
 
 '''
 == REGLES ABSOLUES (resume)
@@ -22,11 +22,13 @@ _Session en cours_ : — (S-127 terminée).
 === 7. CAPSULE CONSUME SLIDER — capsule ne modifie jamais le deck source
 
 '''
-== 10 dernières sessions (118-127)
+== 10 dernières sessions (119-128)
 
 [cols="1,1,1,3,1"]
 |===
 |# |Date |Type |Sujet |Score
+
+| 128 | 2026-08-26 | tdd+bdd+cloture | **EPIC CAP-PREVIEW TERMINÉ 3/3 US** — `PreviewConfig` (14e section) + `mergePreviewConfig` 4 sources + `ScreenshotCaptureImpl` previewOnly short-circuit + Guards `captureDeckSequential`/`captureDeckParallel` + Cucumber `capsule_preview.feature` 3 scénarios `@preview` + runner dédié 18e + `PreviewExtensionFunctionalTest` 3 tests. 1034 unit VERT (+11 net), 75 functional VERT (+3 net). Domaine `capsule.preview` (14e) clos. | 9/10
 
 | 127 | 2026-08-26 | feat+bdd+cloture | **CAP-PODCAST US-2** — `GenerateCapsulePodcastTask` (113 lignes) + `CapsuleManager.registerGeneratePodcastTask` (16ème) + `CapsuleMessages` 25ème key (11 properties) + Cucumber `capsule_podcast.feature` 3 scénarios `@podcast` + runner dédié 17ème `cucumberTestPodcast` + `GeneratePodcastFunctionalTest` 3 tests. 1023 unit VERT (+9 i18n), 72 functional VERT (+3). EPIC CAP-PODCAST TERMINÉ 3/3 US. Domaine `capsule.podcast` clos. | 9/10
 
@@ -45,8 +47,6 @@ _Session en cours_ : — (S-127 terminée).
 | 120 | 2026-08-25 | cross-borough | **EPIC MEMPHIS-BOM-FIX US-5** — catalogue `slider`→`slider-plugin`, BOM 0.0.27. Bug Groovy 3.x fixé. CAP-TRANSCRIPT TERMINÉ. | 10/10
 
 | 119 | 2026-08-16 | bdd+cloture | **CAP-TRANSCRIPT US-5 Cucumber BDD** — 4 scénarios + runner dédié. EPIC CAP-TRANSCRIPT 6/6 US. | 9/10
-
-| 118 | 2026-08-14 | feat+tdd | **CAP-TRANSCRIPT US-4 tâche + wiring** — `GenerateCapsuleTranscriptTask` + `CapsuleMessages` 24ème key. 3 functional GREEN. | 9/10
 |===
 
 _Sessions 000-117 archivées_ : rapports dans `.agents/sessions/`, résumé dans `SESSIONS_HISTORY.adoc` + `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc`.
@@ -59,7 +59,7 @@ _Sessions 000-117 archivées_ : rapports dans `.agents/sessions/`, résumé dans
 |EPIC |Description |Statut |Priorité
 
 | CAP-PODCAST | Extraction audio-only — `PodcastConcatenator` FFmpeg concat MP3 slides, tâche `generateCapsulePodcast`. Domaine `capsule.podcast` 13ème. 3 US ~4 pts | ✅ TERMINÉ (S-127) | P2
-| CAP-PREVIEW | Mode dry-run — `capture.previewOnly` 4 sources, screenshot path s'arrête après PNG. 3 US ~4 pts | ⬜ TODO | P2
+| CAP-PREVIEW | Mode dry-run — `capture.previewOnly` 4 sources, screenshot path s'arrête après PNG. 3 US ~4 pts | ✅ TERMINÉ (S-128) | P2
 | CAP-CHAPITRE | Intro/outro + chapter markers — `CardRenderer` PNG, `ChapterMarkers` Matroska tags. 5 US ~10 pts | ⬜ TODO | P2
 | CAP-CR3-4 | Convention Gradle `resolveScriptDir/resolveDeckDir` configurable. ~2 pts | ⬜ TODO | P2
 
@@ -108,5 +108,5 @@ _Details EPICs terminés_ : rapports dans `.agents/sessions/`, détails archivé
 | `doc/CAPSULE_ARCHITECTURE.adoc` | Cadrage architecture pipeline capsule | LAZY
 |===
 
-_Total_ : 24 EPICs terminés + 3 EPICs TODO. _Baseline courante_ :
-1023 unit VERT, 72 functional VERT, 17 cucumber dédiés GREEN.
+_Total_ : 25 EPICs terminés + 2 EPICs TODO. _Baseline courante_ :
+1034 unit VERT, 75 functional VERT, 18 cucumber dédiés GREEN.

@@ -211,6 +211,7 @@ open class CapsuleVideoTask : DefaultTask() {
                     timeout = capsuleExtension.playwrightTimeout.get(),
                     ffmpegPath = capsuleExtension.ffmpegExecutablePath.get(),
                     encodeParallelism = capsuleExtension.parallelCaptureThreads.get(),
+                    previewOnly = capsuleExtension.previewOnly.get(),
                 )
             },
             noOpCapture = NoOpPlaywrightCapture(),
@@ -537,6 +538,12 @@ open class CapsuleVideoTask : DefaultTask() {
             deckCapture.close()
         }
 
+        if (capsuleExtension.previewOnly.get()) {
+            val pngs = videoOutputDir.listFiles { f -> f.name.endsWith(".png") }?.toList().orEmpty()
+            logger.lifecycle("CAPSULE PREVIEW → {} PNGs in {}", pngs.size, videoOutputDir.absolutePath)
+            return
+        }
+
         // SCREENSHOT strategy leaves the per-slide `slide-N.<ext>` next to the
         // concatenated `capsule.<ext>`, and listFiles() order is unspecified:
         // always prefer the concatenated file, never a single slide.
@@ -576,6 +583,11 @@ open class CapsuleVideoTask : DefaultTask() {
             audioDir = audioDir,
             captureTimeoutMillis = capsuleExtension.captureTimeoutMinutes.get().toLong() * 60_000L
         )
+        if (capsuleExtension.previewOnly.get()) {
+            val pngs = videoOutputDir.listFiles { f -> f.name.endsWith(".png") }?.toList().orEmpty()
+            logger.lifecycle("CAPSULE PREVIEW (parallel) → {} PNGs in {}", pngs.size, videoOutputDir.absolutePath)
+            return
+        }
         val concatVideo = listOf("webm", "mp4")
             .map { videoOutputDir.resolve("${parsed.deckName}.$it") }
             .firstOrNull { it.exists() }

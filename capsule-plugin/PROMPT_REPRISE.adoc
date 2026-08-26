@@ -1,74 +1,58 @@
 = PROMPT_REPRISE — Capsule Gradle (Détroit)
-:session: 128
+:session: 129
 :borough: Détroit
-:session_precedente: 127 — CAP-PODCAST US-2 tâche+wiring+cucumber (EPIC TERMINÉ)
+:session_precedente: 128 — CAP-PREVIEW 3/3 US (EPIC TERMINÉ)
 
 == Contexte Hérité
 
-Session 127 — **CAP-PODCAST US-2 TERMINÉ** (EPIC CAP-PODCAST 3/3 US) :
-- `GenerateCapsulePodcastTask.kt` (113 lignes, `capsule/podcast/`) — tâche
-  Gradle `@DisableCachingByDefault` : `@InputFiles audioFiles`,
-  `@Input deckName`, `@OutputFile podcastOutput`, `@Input podcastEnabled`.
-  TaskAction : skip si `!enabled` ; skip si output existe ET
-  `MediaProbeUtil.probeDuration > 0.0` (économie d'encre) ; skip si
-  `audioFiles` vide → warn ; factory `resolvePodcastConcatenator`.
-- `CapsuleManager.registerGeneratePodcastTask` (16ème, L371) — pattern
-  `registerGenerateTranscriptTask`. `audioFiles` résolus depuis
-  `build/capsule/<deckName>/slide-*.mp3` (provider lazy), `podcastOutput`
-  convention `build/capsule/<deckName>-podcast.mp3`,
-  `dependsOn("generateCapsuleVideo")`.
-- `CapsuleMessages` 25ème key (11 `Messages*.properties`).
-- Cucumber `capsule_podcast.feature` 3 scénarios `@podcast` + runner dédié
-  17ème `CucumberTaskSpec("cucumberTestPodcast")` + `CapsulePodcastSteps`
-  préfixés "podcast" (bug S-088).
-- `GeneratePodcastFunctionalTest` 3 tests (task registered, disabled skip,
-  enabled NoOp → degraded no MP3).
-- `check` VERT 4m25s — 1023 unit (+9 i18n), 72 functional (+3), 17 cucumber.
-- Rapport : `.agents/sessions/127-cap-podcast-us2-task-wiring-cucumber.adoc`
-- EPIC CAP-PODCAST TERMINÉ 3/3 US. Domaine `capsule.podcast` (13ème) clos.
+Session 128 — **CAP-PREVIEW TERMINÉ 3/3 US** :
+- US-0 : `PreviewConfig` data class (1 champ `enabled: Boolean = false`) +
+  `CapsuleConfig` 14e section + `mergePreviewConfig` 4 sources (ENV/props/YAML/CLI) +
+  `CapsuleExtension.previewOnly` + `pushConfigIntoExtension` preview block.
+- US-1 : `ScreenshotCaptureImpl` previewOnly constructor param → capture PNG only,
+  skip `encodeSlides`/`concatSlides`. Guards `captureDeckSequential`/`captureDeckParallel`
+  skip audio post + format conversion. `PreviewExtensionFunctionalTest` 3 tests.
+- US-2 : `capsule_preview.feature` 3 scénarios `@preview` + runner dédié 18e
+  `cucumberTestPreview` + `CapsulePreviewSteps` préfixés "preview".
+- Gate : 1034 unit (+11 net), 75 functional (+3 net), 3 cucumber PASSED.
+- Domaine `capsule.preview` (14e) clos.
+- Rapport : `.agents/sessions/128-cap-preview-dry-run.adoc`
 
-== Mission Session 128
+== Mission Session 129
 
-=== CAP-PREVIEW — Mode dry-run (3 US ~4 pts)
+=== CAP-CHAPITRE — Intro/outro + chapter markers (5 US ~10 pts)
 
-. `CaptureConfig.previewOnly: Boolean = false` (14ème section `CapsuleConfig`)
-  + `mergePreviewConfig` 4 sources + `CapsuleExtension` property
-  `previewOnly` + `pushConfigIntoExtension` preview block.
-. `ScreenshotCaptureImpl` : si `previewOnly` → capture PNG + stop (skip
-  mux WebM, skip audio post, skip format conversion). Économie d'encre :
-  si PNG existe → skip capture.
-. Cucumber `capsule_preview.feature` `@preview` (2-3 scénarios : default
-  full pipeline, previewOnly → PNG only no WebM, previewOnly + PNG existe
-  → skip). Runner dédié 18ème + steps préfixés "preview".
+. `CardRenderer` PNG — intro/outro card rendering from deck metadata.
+. `ChapterMarkers` — Matroska/WebM chapter tags from `SlideSegment.titles`.
+. Tâche `generateCapsuleChapters` dependsOn `generateCapsuleVideo`.
+. DSL `chapters { enabled, introText, outroText, outputDir }`.
+. Cucumber BDD 2-3 scénarios `@chapters` + runner dédié 19e.
 
-Baby-step TDD/BDD : ~5 unit (PreviewConfig) + 1 functional (previewOnly →
-PNG only) + 2-3 cucumber scénarios GREEN.
+Baby-step TDD/BDD : domaines `capsule.cards` (15e) + `capsule.chapters` (16e).
 
-=== Reste P2 (après CAP-PREVIEW)
+=== Reste P2 (après CAP-CHAPITRE)
 
-* CAP-CHAPITRE — Intro/outro + chapter markers. 5 US ~10 pts.
 * CAP-CR3-4 — Convention Gradle `resolveScriptDir/resolveDeckDir`. ~2 pts.
 
 == Points d'attention
 
-* 1023 unit VERT (S-127 baseline), 72 functional VERT, 17 cucumber dédiés GREEN
+* 1034 unit VERT (S-128 baseline), 75 functional VERT, 18 cucumber dédiés GREEN
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
 * Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
   préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
 * English only : code, Gherkin, commentaires
 * Économie d'encre = skip si artefact existe et valide (AGENT.adoc Loi)
-* `build.gradle.kts` — 17 `CucumberTaskSpec` actifs (18ème
-  `cucumberTestPreview` à câbler CAP-PREVIEW)
+* `build.gradle.kts` — 18 `CucumberTaskSpec` actifs (19e
+  `cucumberTestChapters` à câbler CAP-CHAPITRE)
 * Conventions 0.0.3 (mavenLocal), BOM 0.0.27, codebase 0.0.10, slider 0.0.18
 * CaptureStrategy 3 valeurs : PLAYWRIGHT (default), SCREENSHOT, REMOTION
-* 13 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
-  i18n, ci, transcript, remotion, podcast + support. `capsule.podcast` clos S-127.
-* `ScreenshotCaptureImpl` = point d'insertion CAP-PREVIEW (skip mux après PNG)
+* 14 domaines DDD : feed, pipeline, ai, context, multilang, validation, audio,
+  i18n, ci, transcript, remotion, podcast, support + preview. `capsule.preview` clos S-128.
 
 == Rappels
 
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 1023 unit VERT (S-127 baseline), 72 functional VERT, cucumber dédiés GREEN
+* 1034 unit VERT (S-128 baseline), 75 functional VERT, cucumber dédiés GREEN
 * `cucumberTest` skippé par défaut (CR-10), `cucumberTestIntegration` skippé
   par défaut (Playwright gate S-121)
 * DSL 4 sources pattern : ENV < props < YAML < CLI
@@ -77,4 +61,4 @@ PNG only) + 2-3 cucumber scénarios GREEN.
 * `compileOnly(libs.slider)` conservé (runtime). `testImplementation(libs.slider)`
   RETIRÉ S-120 (Groovy 3.x conflit ProjectBuilder)
 * Catalogue : `slider-plugin`, slider 0.0.18, codebase 0.0.10, BOM 0.0.27
-* CAP-PREVIEW = mode dry-run (previewOnly → PNG only, skip mux WebM)
+* CAP-CHAPITRE = intro/outro cards + chapter markers Matroska/WebM

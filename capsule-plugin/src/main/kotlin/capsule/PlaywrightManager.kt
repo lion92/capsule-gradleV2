@@ -176,6 +176,7 @@ class ScreenshotCaptureImpl(
     private val timeout: Double = 120_000.0,
     private val ffmpegPath: String = "ffmpeg",
     private val encodeParallelism: Int = 4,
+    private val previewOnly: Boolean = false,
 ) : PlaywrightCapture {
 
     private val logger = Logging.getLogger(ScreenshotCaptureImpl::class.java)
@@ -240,10 +241,16 @@ class ScreenshotCaptureImpl(
         outputDir.mkdirs()
 
         shootSlides(plan, File(deckHtmlPath).absolutePath, viewportWidth, viewportHeight)
+
+        if (previewOnly) {
+            logger.lifecycle("  ScreenshotCapture PREVIEW: {} PNGs captured -> {}", plan.size, outputDir.absolutePath)
+            return
+        }
+
         encodeSlides(plan, viewportWidth, viewportHeight)
         concatSlides(plan)
 
-        logger.lifecycle("  ScreenshotCapture: {} slides → {}", plan.size, plan.finalWebm.name)
+        logger.lifecycle("  ScreenshotCapture: {} slides -> {}", plan.size, plan.finalWebm.name)
     }
 
     /** Navigates the deck once and takes one PNG per slide. Inherently sequential. */

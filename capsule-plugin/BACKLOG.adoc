@@ -1,6 +1,6 @@
 = BACKLOG — capsule-gradle (Détroit)
 :toc:
-:last_update: 2026-08-26 (S-127 EPIC CAP-PODCAST TERMINÉ — détails archivés dans `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc`)
+:last_update: 2026-08-26 (S-128 EPIC CAP-PREVIEW TERMINÉ)
 
 '''
 == 📦 Publication Maven Central ✅
@@ -35,7 +35,7 @@
 | **Mode dry-run** — `capture.previewOnly` 4 sources, screenshot path s'arrête
   après PNG (skip mux WebM). 3 US ~4 pts.
 | P2
-| ⬜ TODO
+| ✅ TERMINÉ (S-128) — US-0 ✅ S-128, US-1 ✅ S-128, US-2 ✅ S-128
 
 | CAP-CHAPITRE
 | **Intro/outro + chapter markers** — `CardRenderer` PNG, `ChapterMarkers`

@@ -215,5 +215,10 @@ class CapsulePlugin : Plugin<Project> {
         if (!ext.podcastOutputFile.isPresent || ext.podcastOutputFile.get() == conventions.podcastOutputFile) {
             ext.podcastOutputFile.set(config.podcast.outputFile)
         }
+
+        // Preview section (CAP-PREVIEW)
+        if (!ext.previewOnly.isPresent || ext.previewOnly.get() == conventions.previewOnly) {
+            ext.previewOnly.set(config.preview.enabled)
+        }
     }
 }
