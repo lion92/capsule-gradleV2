@@ -105,6 +105,7 @@ class CapsulePlugin : Plugin<Project> {
         if (ext.outputDir.get() == conventions.outputDir) ext.outputDir.set(config.input.outputDir)
         if (ext.sliderScriptDir.get() == conventions.sliderScriptDir) ext.sliderScriptDir.set(config.input.sliderScriptDir)
         if (ext.deckSourceDir.get() == conventions.deckSourceDir) ext.deckSourceDir.set(config.input.deckSourceDir)
+        if (ext.sliderBuildDir.get() == conventions.sliderBuildDir) ext.sliderBuildDir.set(config.input.sliderBuildDir)
         if (ext.chromiumExecutablePath.get() == conventions.chromiumExecutablePath) ext.chromiumExecutablePath.set(config.input.chromiumExecutablePath)
 
         // TTS section

@@ -628,12 +628,13 @@ class CapsuleManager(private val project: Project) {
             ) {
                 return candidate
             }
-            val sliderOutput = project.rootProject.projectDir.parentFile
-                ?.resolve("slider-plugin")
-                ?.resolve("slider")
-                ?.resolve("build")
-                ?.resolve("capsule")
-            if (sliderOutput != null && sliderOutput.exists()) return sliderOutput
+            // CAP-CR3-4 — configurable fallback to slider's build output.
+            val sliderBuildDir = capsuleExt.sliderBuildDir.orNull
+            if (!sliderBuildDir.isNullOrBlank()) {
+                val sliderOutput = project.file(sliderBuildDir)
+                    .resolve("slider").resolve("build").resolve("capsule")
+                if (sliderOutput.exists()) return sliderOutput
+            }
             return candidate
         }
 
@@ -641,13 +642,13 @@ class CapsuleManager(private val project: Project) {
             val configured = capsuleExt.deckSourceDir.get()
             val candidate = project.layout.buildDirectory.dir(configured).get().asFile
             if (candidate.exists()) return candidate
-            val sliderOutput = project.rootProject.projectDir.parentFile
-                ?.resolve("slider-plugin")
-                ?.resolve("slider")
-                ?.resolve("build")
-                ?.resolve("docs")
-                ?.resolve("asciidocRevealJs")
-            if (sliderOutput != null && sliderOutput.exists()) return sliderOutput
+            // CAP-CR3-4 — configurable fallback to slider's build output.
+            val sliderBuildDir = capsuleExt.sliderBuildDir.orNull
+            if (!sliderBuildDir.isNullOrBlank()) {
+                val sliderOutput = project.file(sliderBuildDir)
+                    .resolve("slider").resolve("build").resolve("docs").resolve("asciidocRevealJs")
+                if (sliderOutput.exists()) return sliderOutput
+            }
             return candidate
         }
     }

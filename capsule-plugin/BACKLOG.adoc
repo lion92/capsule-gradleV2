@@ -1,6 +1,6 @@
 = BACKLOG — capsule-gradle (Détroit)
 :toc:
-:last_update: 2026-08-26 (S-128 EPIC CAP-PREVIEW TERMINÉ)
+:last_update: 2026-08-26 (S-130 EPIC CAP-CR3-4 TERMINÉ)
 
 '''
 == 📦 Publication Maven Central ✅
@@ -48,7 +48,7 @@
   navigue en dur vers `slider-plugin/...`. Remplacer par convention Gradle
   configurable + validation. ~2 pts.
 | P2
-| ⬜ TODO
+| ✅ TERMINÉ (S-130) — US-0 ✅ S-130, US-1 ✅ S-130, US-2 ✅ S-130
 |===
 
 '''
@@ -104,14 +104,14 @@ Rapports par US dans `.agents/sessions/`._
 | CAP-0→CAP-12 | Bootstrap → split CapsuleManager | — | ✅ TERMINÉ
 |===
 
-_Total_ : 25 EPICs terminés + 2 EPICs TODO. _Baseline courante_ :
-1034 unit VERT, 75 functional VERT, cucumber dédiés GREEN (18
+_Total_ : 27 EPICs terminés. _Baseline courante_ :
+1071 unit VERT, 75 functional VERT, cucumber dédiés GREEN (19
 `CucumberTaskSpec`).
 
 '''
 == Points d'attention
 
-* 1034 unit VERT (S-128 baseline), 75 functional VERT, cucumber dédiés GREEN
+* 1071 unit VERT (S-130 baseline), 75 functional VERT, cucumber dédiés GREEN
 * Baby-step DDD/TDD/BDD : RED → GREEN → REFACTOR (unit → functional → cucumber)
 * Tout nouveau feature cucumber nécessite un runner dédié (bug S-082) + steps
   préfixés par feature (bug S-088 glue `capsule.scenarios` partagée)
@@ -136,7 +136,7 @@ _Total_ : 25 EPICs terminés + 2 EPICs TODO. _Baseline courante_ :
 == Rappels
 
 * GroupId : `education.cccp`, Plugin ID : `education.cccp.capsule`
-* 1034 unit VERT (S-128 baseline), 75 functional VERT, cucumber dédiés GREEN
+* 1071 unit VERT (S-130 baseline), 75 functional VERT, cucumber dédiés GREEN
 * `cucumberTest` skippé par défaut (CR-10), `cucumberTestIntegration` skippé
   par défaut (Playwright gate S-121)
 * DSL 4 sources pattern : ENV < props < YAML < CLI

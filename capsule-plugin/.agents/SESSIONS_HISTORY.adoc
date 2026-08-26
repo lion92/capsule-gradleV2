@@ -1,13 +1,15 @@
 = SESSIONS_HISTORY — capsule-gradle
 
 _Date creation_ : 2026-05-14
-_Derniere rotation_ : 2026-08-26 (S-129) — archivage rotatif, sessions 000-118 archivées (voir `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc`). Rapports détaillés dans `.agents/sessions/`.
+_Derniere rotation_ : 2026-08-26 (S-130) — archivage rotatif, sessions 000-118 archivées (voir `.agents/archives/CONTEXT_ARCHIVE_2026-08-rot1.adoc`). Rapports détaillés dans `.agents/sessions/`.
 
-== 10 dernières sessions (120-129)
+== 10 dernières sessions (121-130)
 
 [cols="1,1,1,3,1"]
 |===
 |# |Date |Type |Sujet |Score
+
+| 130 | 2026-08-26 | feat+ddd+tdd+cloture | **EPIC CAP-CR3-4 TERMINÉ 3/3 US** — `sliderBuildDir` property configurable + refactor `resolveScriptDir`/`resolveDeckDir` (fallback configurable au lieu hardcode `slider-plugin/...`). 1071 unit VERT (+8 net). | 9/10
 
 | 129 | 2026-08-26 | tdd+bdd+cloture | **EPIC CAP-CHAPITRE TERMINÉ 5/5 US** — `ChaptersConfig` (15e section) + `mergeChaptersConfig` 4 sources + `ChapterMarker` interface/Impl/NoOp (factory 9e) + `CardRenderer` interface/Impl/NoOp (factory 10e) + `GenerateCapsuleChaptersTask` + `ChapterEntryParser` + Cucumber 3 scénarios `@chapters` + runner dédié 19e. 1063 unit VERT (+29 net), 75 functional, 3 cucumber PASSED. Domaines `capsule.chapters` (15e) + `capsule.cards` (16e) clos. | 9/10
 

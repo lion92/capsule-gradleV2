@@ -1,0 +1,57 @@
+= Session 130 — CAP-CR3-4 (EPIC terminé 3/3 US)
+_Du_ 2026-08-26 _au_ 2026-08-26
+_Borough_ : Détroit (capsule-gradle)
+
+== Objectif
+
+EPIC CAP-CR3-4 : Convention Gradle `resolveScriptDir`/`resolveDeckDir` —
+remplacer le fallback hardcodé vers `slider-plugin/...` par une propriété
+configurable `sliderBuildDir`. 3 US ~3 pts.
+
+== Résultat
+
+*EPIC CAP-CR3-4 TERMINÉ 3/3 US.*
+
+=== US-0 — sliderBuildDir property
+- `CapsuleExtension.kt` — nouvelle propriété `sliderBuildDir: Property<String>` (default `""`)
+- `CapsuleConfig.kt` — `InputConfig.sliderBuildDir` (default `""`)
+- `CapsuleModels.kt` — `CapsuleConventions.sliderBuildDir` + initialization
+- `CapsuleConfigMerger.kt` — ENV `CAPSULE_INPUT_SLIDER_BUILD_DIR` + props `capsule.input.sliderBuildDir` + mergeStr 4 sources
+- `CapsulePlugin.kt` — push guard `sliderBuildDir`
+
+=== US-1 — resolveScriptDir/resolveDeckDir refactor
+- `CapsuleManager.kt` — les 2 fonctions utilisent `capsuleExt.sliderBuildDir` au lieu de `rootProject.projectDir.parentFile/slider-plugin/...`
+- Fallback : si `sliderBuildDir` est configuré, cherche `<sliderBuildDir>/slider/build/capsule` (scripts) ou `<sliderBuildDir>/slider/build/docs/asciidocRevealJs` (deck)
+- Backward compat : default `""` = pas de fallback externe (comportement identique si build dir existe)
+
+=== US-2 — Unit tests
+- `CapsuleManagerPathResolutionTest.kt` — 8 tests (4 resolveScriptDir + 4 resolveDeckDir)
+- Tests : build dir existe, fallback sliderBuildDir configuré, sliderBuildDir non configuré, sliderBuildDir inexistant
+
+=== Baseline
+- Unit tests : 1063 → 1071 (+8 net)
+- Total tests globaux inchangés (pas de cucumber, pas de functional)
+
+== Fichiers créés (1)
+
+- `src/test/kotlin/capsule/CapsuleManagerPathResolutionTest.kt` (8 tests)
+
+== Fichiers modifiés (6)
+
+- `CapsuleExtension.kt` — +1 property `sliderBuildDir`
+- `CapsuleConfig.kt` — +1 champ `InputConfig.sliderBuildDir`
+- `CapsuleModels.kt` — +1 champ `CapsuleConventions.sliderBuildDir` + initialization
+- `CapsuleConfigMerger.kt` — +3 lignes (ENV + props + mergeStr)
+- `CapsulePlugin.kt` — +1 push guard
+- `CapsuleManager.kt` — refactor `resolveScriptDir`/`resolveDeckDir` (fallback configurable)
+
+== Décisions techniques
+
+1. Default `""` (vide) = pas de fallback externe — backward compat totale
+2. `project.file(sliderBuildDir)` au lieu de `rootProject.projectDir.parentFile` — résout par rapport au project courant, pas au workspace racine
+3. Pas de Cucumber — refactoring pur, comportement inchangé quand `sliderBuildDir` non configuré
+4. Pas de bump BOM — modification locale capsule uniquement
+
+== Prochaine session
+
+131 — Tous les EPICs TODO du backlog sont terminés. Le borough Détroit est en maintenance.

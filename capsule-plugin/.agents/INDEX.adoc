@@ -5,10 +5,10 @@ _Règles absolues_ : voir `AGENT.adoc`
 _DAG_ : N2 — Plugin Gradle de generation de capsules video
 _Dependance N2_ : slider-gradle (compileOnly dans build.gradle.kts, runtime apply dans CapsulePlugin)
 
-_Derniere mise a jour_ : 2026-08-26 (S-129 clôture EPIC CAP-CHAPITRE)
-_Session terminee_ : 129 — **CAP-CHAPITRE 5/5 US** — `ChaptersConfig` (15e section) + `mergeChaptersConfig` 4 sources + `ChapterMarker` interface/Impl/NoOp + `CardRenderer` interface/Impl/NoOp + `GenerateCapsuleChaptersTask` + `ChapterEntryParser` + factories 9e/10e + Cucumber `capsule_chapters.feature` 3 scénarios `@chapters` + runner dédié 19e `cucumberTestChapters`. 1063 unit VERT (+29 net), 75 functional VERT, 3 cucumber PASSED. EPIC CAP-CHAPITRE TERMINÉ. Domaines `capsule.chapters` (15e) + `capsule.cards` (16e) clos.
-_Prochaine session_ : 130 — Maintenance ou nouvel EPIC P2.
-_Session en cours_ : — (S-129 terminée).
+_Derniere mise a jour_ : 2026-08-26 (S-130 clôture EPIC CAP-CR3-4)
+_Session terminee_ : 130 — **CAP-CR3-4 3/3 US** — `sliderBuildDir` property configurable + refactor `resolveScriptDir`/`resolveDeckDir` (fallback configurable au lieu du hardcode `slider-plugin/...`). 1071 unit VERT (+8 net). EPIC CAP-CR3-4 TERMINÉ.
+_Prochaine session_ : 131 — Maintenance (tous EPICs terminés).
+_Session en cours_ : — (S-130 terminée).
 
 '''
 == REGLES ABSOLUES (resume)

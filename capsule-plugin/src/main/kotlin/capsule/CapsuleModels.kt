@@ -65,6 +65,10 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
     val deckSourceDir: Property<String> = objects.property(String::class.java)
         .convention("docs/asciidocRevealJs")
 
+    /** CAP-CR3-4 — path to slider's build output directory (fallback for script/deck resolution). */
+    val sliderBuildDir: Property<String> = objects.property(String::class.java)
+        .convention("")
+
     val ffmpegExecutablePath: Property<String> = objects.property(String::class.java)
         .convention("ffmpeg")
 
@@ -240,6 +244,7 @@ open class CapsuleExtension @Inject constructor(objects: ObjectFactory) {
         outputDir = "capsule",
         sliderScriptDir = "capsule",
         deckSourceDir = "docs/asciidocRevealJs",
+        sliderBuildDir = "",
         chromiumExecutablePath = "",
         ttsEngine = "piper",
         ttsVoice = "fr_FR-siwis-medium",
@@ -299,6 +304,7 @@ data class CapsuleConventions(
     val outputDir: String,
     val sliderScriptDir: String,
     val deckSourceDir: String,
+    val sliderBuildDir: String,
     val chromiumExecutablePath: String,
     val ttsEngine: String,
     val ttsVoice: String,

@@ -36,6 +36,7 @@ data class InputConfig(
     val outputDir: String = "capsule",
     val sliderScriptDir: String = "capsule",
     val deckSourceDir: String = "docs/asciidocRevealJs",
+    val sliderBuildDir: String = "",
     val chromiumExecutablePath: String = ""
 )
 

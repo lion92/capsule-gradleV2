@@ -90,6 +90,7 @@ object CapsuleConfigMerger {
                 outputDir = env["CAPSULE_INPUT_OUTPUT_DIR"] ?: "capsule",
                 sliderScriptDir = env["CAPSULE_INPUT_SLIDER_SCRIPT_DIR"] ?: "capsule",
                 deckSourceDir = env["CAPSULE_INPUT_DECK_SOURCE_DIR"] ?: "docs/asciidocRevealJs",
+                sliderBuildDir = env["CAPSULE_INPUT_SLIDER_BUILD_DIR"] ?: "",
                 chromiumExecutablePath = env["CAPSULE_INPUT_CHROMIUM_EXECUTABLE_PATH"] ?: ""
             ),
             tts = TtsConfig(
@@ -188,6 +189,7 @@ object CapsuleConfigMerger {
                 outputDir = props["capsule.input.outputDir"] ?: "capsule",
                 sliderScriptDir = props["capsule.input.sliderScriptDir"] ?: "capsule",
                 deckSourceDir = props["capsule.input.deckSourceDir"] ?: "docs/asciidocRevealJs",
+                sliderBuildDir = props["capsule.input.sliderBuildDir"] ?: "",
                 chromiumExecutablePath = props["capsule.input.chromiumExecutablePath"] ?: ""
             ),
             tts = TtsConfig(
@@ -294,6 +296,7 @@ object CapsuleConfigMerger {
             outputDir = mergeStr(cli, "input.outputDir", yaml?.outputDir, props.outputDir, env.outputDir),
             sliderScriptDir = mergeStr(cli, "input.sliderScriptDir", yaml?.sliderScriptDir, props.sliderScriptDir, env.sliderScriptDir),
             deckSourceDir = mergeStr(cli, "input.deckSourceDir", yaml?.deckSourceDir, props.deckSourceDir, env.deckSourceDir),
+            sliderBuildDir = mergeStr(cli, "input.sliderBuildDir", yaml?.sliderBuildDir, props.sliderBuildDir, env.sliderBuildDir),
             chromiumExecutablePath = mergeStr(cli, "input.chromiumExecutablePath", yaml?.chromiumExecutablePath, props.chromiumExecutablePath, env.chromiumExecutablePath)
         )
     }
