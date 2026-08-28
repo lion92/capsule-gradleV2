@@ -5,6 +5,40 @@ object HtmlSectionParser {
     private val sectionOpenRegex = Regex("""<section\b(?![^>]*/>)[^>]*>""")
     private val sectionCloseRegex = Regex("""</section>""")
 
+    /**
+     * Gourmand à dessein : `.*` et non `.*?`.
+     *
+     * La forme paresseuse s'arrête au premier `</div>` rencontré, donc au
+     * premier `<div>` imbriqué dans une diapo — colonnes, encadrés, tout deck
+     * un peu construit en contient. Le contenu était alors tronqué en silence :
+     * la moitié des sections disparaissait du compte, et l'appelant croyait
+     * simplement que le deck avait moins de diapos. Le `</div>` du conteneur
+     * `slides` est le dernier du document, d'où la forme gourmande.
+     */
+    private val slidesDivRegex = Regex("""(?s)<div class="slides">(.*)</div>""")
+
+    /**
+     * Contenu du conteneur `<div class="slides">` d'un deck reveal.js.
+     *
+     * @return le balisage entre les balises, ou `null` si le deck n'a pas de
+     *         conteneur `slides`.
+     */
+    fun slidesMarkup(deckHtml: String): String? =
+        slidesDivRegex.find(deckHtml)?.groupValues?.get(1)
+
+    private val headRegex = Regex("""(?s)<head>.*?</head>""")
+
+    /**
+     * Bloc `<head>` du deck, feuilles de style comprises.
+     *
+     * Toute diapo extraite le rejoue tel quel : c'est ce qui lui garde son
+     * thème. Trois endroits en avaient chacun leur copie, dont deux
+     * recompilaient l'expression à chaque diapo.
+     *
+     * @return le bloc `<head>…</head>`, ou la chaîne vide s'il n'y en a pas.
+     */
+    fun headMarkup(deckHtml: String): String = headRegex.find(deckHtml)?.value.orEmpty()
+
     fun extractTopLevelSections(slidesContent: String): List<String> {
         val sections = mutableListOf<String>()
         var depth = 0

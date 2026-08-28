@@ -205,7 +205,7 @@ Configuration is resolved from 4 sources (priority: CLI > YAML > gradle.properti
 - **Java** 25+ (Kotlin 2.4.10 toolchain)
 - **Gradle** 9.6.1+
 - **Piper** (TTS, local offline) — default engine
-- **espeak** (TTS fallback)
+- **espeak** (TTS fallback) — `espeak-ng` is picked up automatically when `espeak` itself is absent, as on current Debian/Ubuntu
 - **Chromium** (auto-downloaded by Playwright on first run)
 - **FFmpeg** (for `deployCapsule` 9:16 recrop and subtitle burn-in)
 - **Manim** (optional, for mathematical animation slides)

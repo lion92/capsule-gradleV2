@@ -18,10 +18,9 @@ object CapsuleVideoOutputRenamer {
     fun rename(rendered: File, target: File): File {
         if (!rendered.exists() || rendered.absolutePath == target.absolutePath) return rendered
         target.parentFile?.mkdirs()
-        if (!rendered.renameTo(target)) {
-            rendered.copyTo(target, overwrite = true)
-            rendered.delete()
-        }
+        // Un seul déplacement dans le plugin : cf. capsule.FileReplace, qui gère
+        // le passage d'un système de fichiers à l'autre.
+        capsule.FileReplace.moveOver(rendered, target)
         return target
     }
 }

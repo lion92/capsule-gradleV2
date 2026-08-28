@@ -43,17 +43,13 @@ class ManimVideoMixerImpl(
 
     private val logger = Logging.getLogger(ManimVideoMixerImpl::class.java)
 
-    override fun isAvailable(): Boolean {
-        return try {
-            val proc = ProcessBuilder(ffmpegPath, "-version")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
-        } catch (e: Exception) {
-            false
-        }
-    }
+    // Sondé une fois : `mix()` appelle isAvailable() et le renderer parallèle
+    // appelle `mix()` une fois par diapo — un `ffmpeg -version` par diapo pour
+    // une réponse qui ne change pas d'un rendu à l'autre.
+    private var availabilityProbe: Boolean? = null
+
+    override fun isAvailable(): Boolean =
+        availabilityProbe ?: ProcessRunner.probe(ffmpegPath, "-version").also { availabilityProbe = it }
 
     override fun name(): String = "ffmpeg-mixer"
 
@@ -83,14 +79,9 @@ class ManimVideoMixerImpl(
             outputFile.absolutePath
         )
 
-        val proc = ProcessBuilder(cmd)
-            .redirectErrorStream(true)
-            .start()
-
-        val exitCode = proc.waitFor()
-        if (exitCode != 0) {
-            val errorOutput = proc.inputStream.bufferedReader().readText()
-            throw MixerException("ffmpeg mux failed (exit $exitCode): $errorOutput")
+        val result = ProcessRunner.run(cmd)
+        if (!result.isSuccess) {
+            throw MixerException("ffmpeg mux failed (exit ${result.exitCode}): ${result.tail()}")
         }
 
         if (!outputFile.exists()) {

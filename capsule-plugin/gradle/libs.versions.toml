@@ -8,7 +8,16 @@ playwright = "1.52.0"
 kover = "0.9.8"
 cucumber = "7.34.3"
 jackson = "2.18.3"
+# Bibliothèque N1 (education.cccp:codebase-plugin) — dernière version publiée.
 codebase = "0.0.11"
+# Plugin Gradle `education.cccp.codebase` — épinglé une version en arrière.
+# 0.0.11 ne s'applique pas sous Gradle 9.7.1 : CodebaseOcrExtension déclare
+# `abstract val ocrEngine: Provider<OcrEngine>`, et Gradle ne sait décorer que
+# des propriétés abstraites de type Property/ListProperty/… — jamais un Provider
+# nu. L'application échoue sur « Cannot have abstract method
+# CodebaseOcrExtension.getOcrEngine(): Provider<OcrEngine> ».
+# À rebasculer sur `codebase` dès qu'un correctif est publié en amont.
+codebase-gradle-plugin = "0.0.10"
 koog = "1.0.0"
 workspace-bom = "0.0.27"
 i18n-contracts = "0.0.2"
@@ -37,7 +46,7 @@ codebase-contracts = { module = "education.cccp:codebase-contracts", version.ref
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 capsule = { id = "education.cccp.capsule", version.ref = "capsule" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
-codebase = { id = "education.cccp.codebase", version.ref = "codebase" }
+codebase = { id = "education.cccp.codebase", version.ref = "codebase-gradle-plugin" }
 
 [bundles]
 cucumber = [

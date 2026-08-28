@@ -40,11 +40,7 @@ class SubtitleBurnInServiceImpl(
 
     override fun isAvailable(): Boolean {
         return try {
-            val proc = ProcessBuilder(ffmpegPath, "-version")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
+            ProcessRunner.probe(ffmpegPath, "-version")
         } catch (e: Exception) {
             false
         }
@@ -65,14 +61,9 @@ class SubtitleBurnInServiceImpl(
 
         val cmd = SubtitleBurnInCommand.buildArgv(videoFile, subtitleFile, outputFile, style, ffmpegPath)
 
-        val proc = ProcessBuilder(cmd)
-            .redirectErrorStream(true)
-            .start()
-
-        val exitCode = proc.waitFor()
-        if (exitCode != 0) {
-            val errorOutput = proc.inputStream.bufferedReader().readText()
-            throw BurnInException("ffmpeg burn-in failed (exit $exitCode): $errorOutput")
+        val result = ProcessRunner.run(cmd)
+        if (!result.isSuccess) {
+            throw BurnInException("ffmpeg burn-in failed (exit ${result.exitCode}): ${result.tail()}")
         }
 
         if (!outputFile.exists()) {

@@ -85,32 +85,22 @@ open class CapsuleDistribTask : DefaultTask() {
         targetWidth: Int,
         targetHeight: Int
     ) {
-        val proc = ProcessBuilder(
-            ffmpeg, "-y",
-            "-i", input.absolutePath,
-            "-vf", "scale=$targetWidth:$targetHeight:force_original_aspect_ratio=increase,crop=$targetWidth:$targetHeight",
-            "-c:a", "copy",
-            output.absolutePath
-        ).redirectErrorStream(true).start()
-
-        val exitCode = proc.waitFor()
-        if (exitCode != 0) {
-            val stderr = proc.inputStream.bufferedReader().readText()
-            throw RuntimeException("FFmpeg exited with code $exitCode: $stderr")
+        val result = ProcessRunner.run(
+            listOf(
+                ffmpeg, "-y",
+                "-i", input.absolutePath,
+                "-vf", "scale=$targetWidth:$targetHeight:force_original_aspect_ratio=increase,crop=$targetWidth:$targetHeight",
+                "-c:a", "copy",
+                output.absolutePath,
+            )
+        )
+        if (!result.isSuccess) {
+            throw RuntimeException("FFmpeg exited with code ${result.exitCode}: ${result.tail()}")
         }
     }
 
-    private fun isFfmpegAvailable(ffmpegPath: String): Boolean {
-        return try {
-            val proc = ProcessBuilder(ffmpegPath, "-version")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
-        } catch (e: Exception) {
-            false
-        }
-    }
+    private fun isFfmpegAvailable(ffmpegPath: String): Boolean =
+        ProcessRunner.probe(ffmpegPath, "-version")
 
     private val webmSignature = byteArrayOf(0x1a.toByte(), 0x45.toByte(), 0xdf.toByte(), 0xa3.toByte())
 

@@ -69,9 +69,8 @@ open class GenerateCapsuleChaptersTask : DefaultTask() {
 
         // Economy of ink — skip if the chapters.json already exists and is non-empty.
         val chaptersFile = java.io.File(outDir, "chapters.json")
-        if (chaptersFile.exists() && chaptersFile.readText().trim().isNotBlank()
-            && chaptersFile.readText().trim() != "[]"
-        ) {
+        val existing = if (chaptersFile.exists()) chaptersFile.readText().trim() else ""
+        if (existing.isNotBlank() && existing != "[]") {
             logger.lifecycle("CAPSULE CHAPTERS → ${chaptersFile.name} already exists, skipping (economy of ink)")
             return
         }

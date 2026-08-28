@@ -174,21 +174,19 @@ class RemotionCaptureImpl(
 
         private val MANIM_ATTR = Regex("""data-manim="([^"]+)"""")
 
-        private val SLIDES_REGEX = Regex("""(?s)<div class="slides">(.*)</div>""")
-        private val HEAD_REGEX = Regex("""(?s)<head>.*?</head>""")
-
         /**
-         * Extracts the markup holding the slides.
+         * Extracts the markup holding the slides, falling back to the whole
+         * document when the deck carries no `slides` container.
          *
-         * Greedy on purpose: the non-greedy form stops at the first nested
-         * `</div>`, which silently truncates any deck whose slides contain a
-         * `<div>` — the trailing `</div>` of the container is the last one.
+         * The extraction itself lives in [HtmlSectionParser.slidesMarkup]:
+         * [CapsuleVideoTask.createSingleSlideHtml] needs exactly the same rule,
+         * and kept its own — non-greedy, hence truncating — copy of it.
          */
         internal fun slidesMarkup(deckHtml: String): String =
-            SLIDES_REGEX.find(deckHtml)?.groupValues?.get(1) ?: deckHtml
+            HtmlSectionParser.slidesMarkup(deckHtml) ?: deckHtml
 
         /** Extracts the deck `<head>` so slides keep their own stylesheet. */
         internal fun headMarkup(deckHtml: String): String =
-            HEAD_REGEX.find(deckHtml)?.value.orEmpty()
+            HtmlSectionParser.headMarkup(deckHtml)
     }
 }

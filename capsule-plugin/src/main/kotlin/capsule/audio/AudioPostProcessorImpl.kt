@@ -25,11 +25,7 @@ class AudioPostProcessorImpl(
 
     override fun isAvailable(): Boolean {
         return try {
-            val proc = ProcessBuilder(ffmpegPath, "-version")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
+            capsule.ProcessRunner.probe(ffmpegPath, "-version")
         } catch (_: Exception) {
             false
         }
@@ -58,11 +54,9 @@ class AudioPostProcessorImpl(
         val argv = AudioPostCommand.buildArgv(videoFile, bgmFile, outputFile, config, ffmpegPath)
 
         return try {
-            val proc = ProcessBuilder(argv).redirectErrorStream(true).start()
-            val exitCode = proc.waitFor()
-            if (exitCode != 0) {
-                val err = proc.inputStream.bufferedReader().readText()
-                logger.warn("ffmpeg audio post failed (exit {}): {}", exitCode, err)
+            val result = capsule.ProcessRunner.run(argv)
+            if (!result.isSuccess) {
+                logger.warn("ffmpeg audio post failed (exit {}): {}", result.exitCode, result.tail())
                 return false
             }
             outputFile.exists() && outputFile.length() > 0

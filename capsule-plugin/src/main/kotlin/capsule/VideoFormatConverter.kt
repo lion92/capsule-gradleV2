@@ -46,11 +46,7 @@ class VideoFormatConverterImpl(
 
     override fun isAvailable(): Boolean {
         return try {
-            val proc = ProcessBuilder(ffmpegPath, "-version")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
+            ProcessRunner.probe(ffmpegPath, "-version")
         } catch (_: Exception) {
             false
         }
@@ -71,11 +67,9 @@ class VideoFormatConverterImpl(
             mp4File.absolutePath
         )
         return try {
-            val proc = ProcessBuilder(cmd).redirectErrorStream(true).start()
-            val exitCode = proc.waitFor()
-            if (exitCode != 0) {
-                val err = proc.inputStream.bufferedReader().readText()
-                logger.warn("ffmpeg format conversion failed (exit {}): {}", exitCode, err)
+            val result = ProcessRunner.run(cmd)
+            if (!result.isSuccess) {
+                logger.warn("ffmpeg format conversion failed (exit {}): {}", result.exitCode, result.tail())
                 return false
             }
             mp4File.exists() && mp4File.length() > 0

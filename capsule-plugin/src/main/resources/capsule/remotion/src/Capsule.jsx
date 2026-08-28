@@ -46,6 +46,12 @@ const REVEAL_CSS = `
  * Anchored right and scaled down so its centred composition lands clear of the
  * text column. OffthreadVideo rather than a plain <video>: a frame-by-frame
  * renderer needs the exact frame, not whatever the element happens to show.
+ *
+ * The anchor is `right: 0`, not a negative offset. Pushing the video 6 % past
+ * the frame did free room on the left, but a Manim composition is centred and
+ * draws its labels out to its own edges: the part shoved off-screen was cut,
+ * and several capsules shipped with labels sliced down the right margin. The
+ * width carries that job instead — the video is simply narrower.
  */
 const Animation = ({ asset, durationInFrames }) => {
   const frame = useCurrentFrame();
@@ -66,9 +72,9 @@ const Animation = ({ asset, durationInFrames }) => {
         muted
         style={{
           position: 'absolute',
-          right: '-6%',
+          right: 0,
           top: '50%',
-          width: '82%',
+          width: '76%',
           transform: 'translateY(-50%)',
           // Sans ce fondu, le bord gauche de la vidéo coupe net les aplats des
           // schémas (l'horizon marin, par exemple) en plein milieu de l'image.

@@ -148,8 +148,14 @@ open class CapsuleBuildTask : DefaultTask() {
             }
         }
 
-        futures.forEach { it.get() }
-        executor.shutdown()
+        // `shutdown()` doit être atteint même si un `get()` lève : sans le
+        // `finally`, un échec inattendu laissait le pool de threads — non
+        // démons — vivant dans le démon Gradle, qui ne rendait plus la main.
+        try {
+            futures.forEach { it.get() }
+        } finally {
+            executor.shutdown()
+        }
 
         if (failed.get() > 0 && !capsuleExtension.ttsFallbackEnabled.get()) {
             throw TtsException("${failed.get()} TTS synthesis failures (fallback disabled)")

@@ -20,17 +20,13 @@ class PiperTtsEngine(
     private val resolvedModel: String =
         language?.let { MultiLanguageResolver.piperModel(it.code) } ?: model
 
-    override fun isAvailable(): Boolean {
-        return try {
-            val proc = ProcessBuilder(executablePath, "--help")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
-        } catch (e: Exception) {
-            false
-        }
-    }
+    // Sondé une fois par instance : `synthesize()` vérifie la disponibilité et
+    // CapsuleBuildTask synthétise une diapo par thread — sans mémorisation,
+    // c'est un `piper --help` de plus par diapo, en parallèle.
+    private var availabilityProbe: Boolean? = null
+
+    override fun isAvailable(): Boolean =
+        availabilityProbe ?: ProcessRunner.probe(executablePath, "--help").also { availabilityProbe = it }
 
     override fun name(): String = "piper"
 
@@ -50,19 +46,13 @@ class PiperTtsEngine(
             "--output_file", wavFile.absolutePath
         )
 
-        val process = ProcessBuilder(args)
-            .redirectErrorStream(true)
-            .start()
-
-        process.outputStream.bufferedWriter().use { writer ->
-            writer.write(text)
-            writer.flush()
-        }
-
-        val exitCode = process.waitFor()
-        if (exitCode != 0) {
-            val errorOutput = process.inputStream.bufferedReader().readText()
-            throw TtsException("Piper exited with code $exitCode: $errorOutput")
+        // Le texte part sur l'entrée standard, la sortie est drainée vers un
+        // journal : piper écrit une ligne par phrase, et le père qui pousse du
+        // texte pendant que le fils bloque sur un tube plein est un
+        // interblocage franc.
+        val result = ProcessRunner.run(args, stdin = text)
+        if (!result.isSuccess) {
+            throw TtsException("Piper exited with code ${result.exitCode}: ${result.tail()}")
         }
 
         AudioConversionUtil.wavToMp3(wavFile, outputFile)
@@ -96,17 +86,29 @@ class EspeakTtsEngine(
     private val resolvedVoice: String =
         language?.let { MultiLanguageResolver.espeakVoice(it.code) } ?: voice
 
-    override fun isAvailable(): Boolean {
-        return try {
-            val proc = ProcessBuilder(executablePath, "--help")
-                .redirectErrorStream(true)
-                .start()
-            proc.waitFor()
-            proc.exitValue() == 0
-        } catch (e: Exception) {
-            false
+    /**
+     * Binaire réellement utilisé.
+     *
+     * Debian et Ubuntu ne livrent plus `espeak` : le paquet installé est
+     * `espeak-ng`, dont les options `-v`, `-s` et `-w` sont les mêmes. Sans ce
+     * repli, le moteur se déclarait indisponible sur une machine où la synthèse
+     * marche parfaitement, et la capsule repartait avec un texte d'espace
+     * réservé à la place de la voix.
+     */
+    private val resolution: Pair<String, Boolean> by lazy {
+        when {
+            ProcessRunner.probe(executablePath, "--help") -> executablePath to true
+            executablePath == DEFAULT_EXECUTABLE && ProcessRunner.probe(NG_EXECUTABLE, "--help") -> NG_EXECUTABLE to true
+            else -> executablePath to false
         }
     }
+
+    private val resolvedExecutable: String get() = resolution.first
+
+    // Sondé une fois par instance : `synthesize()` vérifie la disponibilité et
+    // CapsuleBuildTask synthétise une diapo par thread — sans mémorisation,
+    // c'est une sonde de plus par diapo, en parallèle.
+    override fun isAvailable(): Boolean = resolution.second
 
     override fun name(): String = "espeak"
 
@@ -115,28 +117,35 @@ class EspeakTtsEngine(
 
     override fun synthesize(text: String, outputFile: File) {
         if (!isAvailable()) {
-            throw TtsException("espeak executable not found at: $executablePath")
+            throw TtsException("espeak executable not found at: $executablePath (ni '$NG_EXECUTABLE')")
         }
 
         outputFile.parentFile.mkdirs()
 
         val wavFile = File(outputFile.parentFile, outputFile.nameWithoutExtension + ".wav")
 
-        val proc = ProcessBuilder(
-            executablePath,
-            "-v", resolvedVoice,
-            "-s", speed.toString(),
-            "-w", wavFile.absolutePath,
-            text
-        ).redirectErrorStream(true).start()
-
-        val exitCode = proc.waitFor()
-        if (exitCode != 0) {
-            val stderr = proc.inputStream.bufferedReader().readText()
-            throw TtsException("espeak exited with code $exitCode: $stderr")
+        val result = ProcessRunner.run(
+            listOf(
+                resolvedExecutable,
+                "-v", resolvedVoice,
+                "-s", speed.toString(),
+                "-w", wavFile.absolutePath,
+                text,
+            )
+        )
+        if (!result.isSuccess) {
+            throw TtsException("espeak exited with code ${result.exitCode}: ${result.tail()}")
         }
 
         AudioConversionUtil.wavToMp3(wavFile, outputFile)
         wavFile.delete()
+    }
+
+    companion object {
+        /** Nom historique du binaire. */
+        internal const val DEFAULT_EXECUTABLE: String = "espeak"
+
+        /** Le seul paquet encore livré par Debian et Ubuntu, ligne de commande compatible. */
+        internal const val NG_EXECUTABLE: String = "espeak-ng"
     }
 }

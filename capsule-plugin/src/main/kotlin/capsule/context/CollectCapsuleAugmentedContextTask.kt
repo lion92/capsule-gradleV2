@@ -178,17 +178,21 @@ abstract class CollectCapsuleAugmentedContextTask : DefaultTask() {
      * The builder prunes the tracker to the channels that survived the token
      * budget via [ProvenanceTracker.retainOnly] — a channel truncated to zero
      * content is dropped from the provenance. Source measurement: raw chars
-     * via `readText().length` and token estimate via the N0
-     * [ContextChannel.estimateTokens] heuristic.
+     * and token estimate via the N0 [ContextChannel.estimateTokens] heuristic,
+     * both taken from a single read (each source was being read from disk twice,
+     * once per measure).
      */
+    private fun provenanceOf(file: java.io.File): ProvenanceSource {
+        val text = file.readText()
+        return ProvenanceSource(
+            fileName = file.name,
+            chars = text.length,
+            tokens = ContextChannel.estimateTokens(text),
+        )
+    }
+
     private fun trackSources(tracker: ProvenanceTracker) {
-        val eagerSources = eagerFiles.files.filter { it.exists() }.sortedBy { it.name }.map { file ->
-            ProvenanceSource(
-                fileName = file.name,
-                chars = file.readText().length,
-                tokens = ContextChannel.estimateTokens(file.readText()),
-            )
-        }
+        val eagerSources = eagerFiles.files.filter { it.exists() }.sortedBy { it.name }.map(::provenanceOf)
         tracker.trackChannel("EAGER", eagerSources)
 
         val rag = ragContent.orNull.orEmpty()
@@ -221,13 +225,7 @@ abstract class CollectCapsuleAugmentedContextTask : DefaultTask() {
 
         val docsFilesResolved = docsFiles.files.filter { it.exists() }.sortedBy { it.name }
         val docsSources = if (docsFilesResolved.isNotEmpty()) {
-            docsFilesResolved.map { file ->
-                ProvenanceSource(
-                    fileName = file.name,
-                    chars = file.readText().length,
-                    tokens = ContextChannel.estimateTokens(file.readText()),
-                )
-            }
+            docsFilesResolved.map(::provenanceOf)
         } else {
             val legacy = docsContent.orNull.orEmpty()
             if (legacy.isBlank()) emptyList()
@@ -251,13 +249,7 @@ abstract class CollectCapsuleAugmentedContextTask : DefaultTask() {
             if (resolved != null && resolved.exists()) {
                 tracker.trackChannel(
                     ContextProvenance.SCENARIO_CHANNEL,
-                    listOf(
-                        ProvenanceSource(
-                            fileName = resolved.name,
-                            chars = resolved.readText().length,
-                            tokens = ContextChannel.estimateTokens(resolved.readText()),
-                        ),
-                    ),
+                    listOf(provenanceOf(resolved)),
                 )
             }
         }
@@ -266,13 +258,7 @@ abstract class CollectCapsuleAugmentedContextTask : DefaultTask() {
         if (glossaryTarget != null && glossaryTarget.exists()) {
             tracker.trackChannel(
                 ContextProvenance.GLOSSARY_CHANNEL,
-                listOf(
-                    ProvenanceSource(
-                        fileName = glossaryTarget.name,
-                        chars = glossaryTarget.readText().length,
-                        tokens = ContextChannel.estimateTokens(glossaryTarget.readText()),
-                    ),
-                ),
+                listOf(provenanceOf(glossaryTarget)),
             )
         }
     }

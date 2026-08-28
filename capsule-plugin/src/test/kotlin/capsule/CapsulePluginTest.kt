@@ -1822,6 +1822,37 @@ class CreateSingleSlideHtmlTest {
         )
     }
 
+    /**
+     * Régression : la diapo réelle contient un `<div>`.
+     *
+     * L'extraction lisait le conteneur avec `<div class="slides">(.*?)</div>`,
+     * paresseux, qui s'arrête au premier `</div>` — celui de la première diapo.
+     * Une seule section était comptée : demander la deuxième tombait hors
+     * bornes et rendait le deck entier, si bien que la capture parallèle
+     * filmait tout le deck à la place de la diapo voulue, sans une ligne de
+     * journal.
+     */
+    @Test
+    fun `createSingleSlideHtml isolates a slide even when slides contain divs`() {
+        val deckWithDivs = """
+<html><head><style>body{margin:0}</style></head><body>
+<div class="reveal">
+  <div class="slides">
+    <section data-capsule-slide="1"><div class="colonne"><h2>Intro</h2></div></section>
+    <section data-capsule-slide="2"><div class="colonne"><h2>Topic</h2></div></section>
+    <section data-capsule-slide="3"><div class="colonne"><h2>End</h2></div></section>
+  </div>
+</div>
+</body></html>
+        """.trimIndent()
+
+        val result = CapsuleVideoTask.createSingleSlideHtml(deckWithDivs, 1)
+
+        assertTrue(result.contains("Topic"), "La diapo demandée doit être là : $result")
+        assertTrue(!result.contains("Intro"), "La diapo 1 ne doit pas suivre : $result")
+        assertTrue(!result.contains("End"), "La diapo 3 ne doit pas suivre : $result")
+    }
+
     @Test
     fun `createSingleSlideHtml with out-of-range index returns fallback`() {
         val result = CapsuleVideoTask.createSingleSlideHtml(threeSlideDeck, 99)

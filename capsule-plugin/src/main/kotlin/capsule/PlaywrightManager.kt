@@ -216,16 +216,7 @@ class ScreenshotCaptureImpl(
         }
         ).also { availabilityProbe = it }
 
-    private fun isFfmpegAvailable(): Boolean = try {
-        val exit = ProcessBuilder(ffmpegPath, "-version")
-            .redirectErrorStream(true)
-            .redirectOutput(File.createTempFile("ffmpeg-probe", ".log").apply { deleteOnExit() })
-            .start()
-            .waitFor()
-        exit == 0
-    } catch (e: Exception) {
-        false
-    }
+    private fun isFfmpegAvailable(): Boolean = ProcessRunner.probe(ffmpegPath, "-version")
 
     override fun name(): String = "screenshot+ffmpeg"
 
@@ -336,18 +327,9 @@ class ScreenshotCaptureImpl(
      */
     private fun runFfmpeg(argv: List<String>, logFile: File, message: (String) -> String) {
         logFile.parentFile?.mkdirs()
-        val exitCode = ProcessBuilder(argv)
-            .redirectErrorStream(true)
-            .redirectOutput(logFile)
-            .start()
-            .waitFor()
-        if (exitCode != 0) {
-            val tail = logFile.takeIf { it.exists() }
-                ?.readLines()
-                ?.takeLast(12)
-                ?.joinToString(System.lineSeparator())
-                .orEmpty()
-            throw CapturingException(message(tail))
+        val result = ProcessRunner.run(argv, logFile = logFile)
+        if (!result.isSuccess) {
+            throw CapturingException(message(result.tail(12)))
         }
         logFile.delete()
     }
