@@ -94,6 +94,48 @@ class RemotionPlannerTest {
         assertTrue(json["slides"][1]["html"].asText().contains("Deux"))
     }
 
+    /**
+     * La composition ajuste la vitesse du schéma pour qu'il finisse avec la
+     * diapo. Sans la durée du clip dans les props, elle ne peut pas savoir
+     * qu'il est plus court ou plus long que la voix : sur « Terre ronde », les
+     * neuf clips l'étaient tous, jusqu'à 6,4 s d'écart sur une diapo de 14,4 s.
+     */
+    @Test
+    fun `props carry the measured length of each manim clip`() {
+        val json = ObjectMapper().readTree(
+            RemotionPlanner.toPropsJson(
+                plan(),
+                mapOf(0 to ManimAsset("S01.mp4", durationSecs = 3.5)),
+            )
+        )
+
+        assertEquals("S01.mp4", json["slides"][0]["manim"].asText())
+        assertEquals(105, json["slides"][0]["manimDurationInFrames"].asInt())
+    }
+
+    @Test
+    fun `props name a clip whose length could not be measured, without a duration`() {
+        val json = ObjectMapper().readTree(
+            RemotionPlanner.toPropsJson(
+                plan(),
+                mapOf(0 to ManimAsset("S01.mp4")),
+            )
+        )
+
+        assertEquals("S01.mp4", json["slides"][0]["manim"].asText())
+        assertTrue(
+            json["slides"][0]["manimDurationInFrames"] == null,
+            "sans mesure, la composition doit jouer le clip à sa vitesse propre"
+        )
+    }
+
+    @Test
+    fun `props leave a slide without animation untouched`() {
+        val json = ObjectMapper().readTree(RemotionPlanner.toPropsJson(plan()))
+        assertTrue(json["slides"][0]["manim"] == null)
+        assertTrue(json["slides"][0]["manimDurationInFrames"] == null)
+    }
+
     @Test
     fun `argv points node at the bundled script with the props and output`() {
         val p = plan()

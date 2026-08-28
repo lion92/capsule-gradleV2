@@ -146,9 +146,9 @@ class RemotionCaptureImpl(
      *
      * Slides without a `data-manim` attribute simply get no animation.
      */
-    private fun stageManimAssets(plan: RemotionPlan, projectDir: File): Map<Int, String> {
+    private fun stageManimAssets(plan: RemotionPlan, projectDir: File): Map<Int, ManimAsset> {
         val publicDir = File(projectDir, "public").apply { mkdirs() }
-        val staged = mutableMapOf<Int, String>()
+        val staged = mutableMapOf<Int, ManimAsset>()
         plan.slides.forEach { slide ->
             val name = MANIM_ATTR.find(slide.html)?.groupValues?.get(1) ?: return@forEach
             val source = manimSources.map { File(it, name) }.firstOrNull { it.isFile }
@@ -160,7 +160,25 @@ class RemotionCaptureImpl(
             if (!target.exists() || target.length() != source.length()) {
                 source.copyTo(target, overwrite = true)
             }
-            staged[slide.index] = name
+            // La durée du clip est mesurée ici, une fois, et voyage jusqu'à la
+            // composition : c'est elle qui décide si le schéma doit être un peu
+            // accéléré pour finir avec la diapo, ou un peu étiré pour l'occuper.
+            val clipSecs = MediaProbeUtil.probeDuration(target)
+            val slideSecs = slide.durationInFrames.toDouble() / plan.fps
+            if (clipSecs > 0.0) {
+                val gap = clipSecs - slideSecs
+                if (kotlin.math.abs(gap) >= REPORTED_GAP_SECS) {
+                    logger.lifecycle(
+                        "  Remotion: diapo {} — schéma {}s pour {}s de voix ({}{}s)",
+                        slide.index + 1,
+                        String.format("%.1f", clipSecs),
+                        String.format("%.1f", slideSecs),
+                        if (gap > 0) "+" else "",
+                        String.format("%.1f", gap),
+                    )
+                }
+            }
+            staged[slide.index] = ManimAsset(name, clipSecs)
         }
         return staged
     }
@@ -171,6 +189,9 @@ class RemotionCaptureImpl(
 
         /** Frames rendered in parallel when slides carry a video. */
         internal const val VIDEO_MAX_CONCURRENCY: Int = 2
+
+        /** Écart clip/diapo à partir duquel le journal le signale. */
+        internal const val REPORTED_GAP_SECS: Double = 1.0
 
         private val MANIM_ATTR = Regex("""data-manim="([^"]+)"""")
 

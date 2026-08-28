@@ -86,7 +86,7 @@ object RemotionPlanner {
      * Kept here rather than in the adapter because it is a pure transformation:
      * a plan in, a string out, verifiable without Node or a browser.
      */
-    fun toPropsJson(plan: RemotionPlan, manimAssets: Map<Int, String> = emptyMap()): String {
+    fun toPropsJson(plan: RemotionPlan, manimAssets: Map<Int, ManimAsset> = emptyMap()): String {
         val mapper = com.fasterxml.jackson.databind.ObjectMapper()
         val root = mapper.createObjectNode()
         root.put("width", plan.width)
@@ -100,7 +100,15 @@ object RemotionPlanner {
             node.put("index", slide.index)
             node.put("durationInFrames", slide.durationInFrames)
             node.put("html", slide.html)
-            manimAssets[slide.index]?.let { node.put("manim", it) }
+            manimAssets[slide.index]?.let { asset ->
+                node.put("manim", asset.fileName)
+                // La composition ajuste la vitesse du schéma pour qu'il finisse
+                // avec la diapo. Sans cette durée, elle ne peut pas savoir que le
+                // clip est plus court ou plus long que la voix qui l'accompagne.
+                if (asset.durationSecs > 0.0) {
+                    node.put("manimDurationInFrames", framesFor(asset.durationSecs, plan.fps))
+                }
+            }
         }
         return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root)
     }
@@ -144,6 +152,15 @@ data class RemotionPlan(
     /** Total length of the composition, in frames. */
     val totalFrames: Int get() = slides.sumOf { it.durationInFrames }
 }
+
+/**
+ * A Manim clip staged for one slide.
+ *
+ * @param fileName name under the Remotion public directory.
+ * @param durationSecs measured length of the clip; 0.0 when it could not be
+ *        probed, in which case the composition plays it at natural speed.
+ */
+data class ManimAsset(val fileName: String, val durationSecs: Double = 0.0)
 
 /** One slide handed to the composition. */
 data class RemotionSlide(
