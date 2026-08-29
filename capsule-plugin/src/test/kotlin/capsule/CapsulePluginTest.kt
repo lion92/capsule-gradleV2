@@ -1315,6 +1315,29 @@ class AudioQualityConstraintTest {
         byteArrayOf(0xFF.toByte(), 0xFA.toByte())
     )
 
+    /**
+     * Debian et Ubuntu ne livrent plus `espeak` : le paquet installé est
+     * `espeak-ng`, dont les options sont les mêmes. Le repli n'existe QUE pour
+     * le nom par défaut — un chemin explicite doit être respecté à la lettre.
+     *
+     * Sans cette borne, un utilisateur qui désigne un binaire précis se
+     * retrouverait avec un autre, sans un mot dans le journal : exactement le
+     * genre de substitution silencieuse qui a déjà coûté une version publiée.
+     */
+    @Test
+    fun `an explicit espeak path never falls back to espeak-ng`() {
+        val engine = EspeakTtsEngine(executablePath = "/nonexistent/path/mon-espeak")
+        assertEquals(false, engine.isAvailable())
+
+        val failure = assertFailsWith<TtsException> {
+            engine.synthesize("bonjour", File.createTempFile("espeak-borne", ".mp3").apply { deleteOnExit() })
+        }
+        assertTrue(
+            failure.message!!.contains("/nonexistent/path/mon-espeak"),
+            "le diagnostic doit nommer le chemin demandé : ${failure.message}"
+        )
+    }
+
     @Test
     fun `real TTS engine must produce binary audio larger than placeholder`() {
         val espeak = EspeakTtsEngine()
